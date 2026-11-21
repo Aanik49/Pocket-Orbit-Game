@@ -1,0 +1,6 @@
+{
+  "name": "Pocket Orbit",
+  "description": "A zen minimalist orbital timing game across 50 handcrafted levels. Tap to shift between fast inner and calm outer orbits, collect stars, dodge space junk, and master lunar gravity.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
