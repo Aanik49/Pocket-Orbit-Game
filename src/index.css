@@ -44,12 +44,75 @@
   }
 }
 
+@keyframes splashIconIn {
+  0% {
+    opacity: 0;
+    transform: scale(0.76) translateY(10px);
+  }
+  65% {
+    opacity: 1;
+    transform: scale(1.04) translateY(0);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+@keyframes splashRingOrbit {
+  0% {
+    opacity: 0;
+    transform: scale(0.75) rotate(0deg);
+  }
+  35% {
+    opacity: 0.7;
+  }
+  100% {
+    opacity: 0.28;
+    transform: scale(1.22) rotate(90deg);
+  }
+}
+
+@keyframes splashTitleIn {
+  0% {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 .animate-modal-enter {
   animation: modalEnter 180ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
+.animate-splash-icon {
+  animation: splashIconIn 720ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.animate-splash-ring {
+  animation: splashRingOrbit 1600ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+.animate-splash-title {
+  opacity: 0;
+  animation: splashTitleIn 560ms cubic-bezier(0.16, 1, 0.3, 1) 240ms forwards;
+}
+
+.animate-splash-sub {
+  opacity: 0;
+  animation: splashTitleIn 520ms cubic-bezier(0.16, 1, 0.3, 1) 460ms forwards;
+}
+
 @media (prefers-reduced-motion: reduce) {
-  .animate-modal-enter {
+  .animate-modal-enter,
+  .animate-splash-icon,
+  .animate-splash-ring,
+  .animate-splash-title,
+  .animate-splash-sub {
     animation: none;
+    opacity: 1;
   }
 }

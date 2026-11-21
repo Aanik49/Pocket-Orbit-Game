@@ -181,6 +181,7 @@ interface VictoryModalProps {
   onReplay: () => void;
   onNext: () => void;
   onOpenLevels: () => void;
+  onReturnTitle: () => void;
 }
 
 export const VictoryModal: React.FC<VictoryModalProps> = ({
@@ -190,6 +191,7 @@ export const VictoryModal: React.FC<VictoryModalProps> = ({
   onReplay,
   onNext,
   onOpenLevels,
+  onReturnTitle,
 }) => {
   const isAllComplete = nextLevelId === null;
   const underPar = summary.shiftCount <= summary.parShifts;
@@ -248,23 +250,35 @@ export const VictoryModal: React.FC<VictoryModalProps> = ({
           </div>
         </div>
 
-        <div className="flex items-center gap-2.5 mt-5">
-          <button
-            type="button"
-            onClick={onReplay}
-            className="h-12 px-4 rounded-xl bg-slate-800/90 hover:bg-slate-700 text-slate-200 text-sm font-medium transition-colors whitespace-nowrap focus-visible:outline-2 focus-visible:outline-sky-400"
-          >
-            Replay
-          </button>
-
+        <div className="flex flex-col gap-2.5 mt-5">
           <button
             type="button"
             onClick={isAllComplete ? onOpenLevels : onNext}
-            className="flex-1 h-12 rounded-xl bg-emerald-400 hover:bg-emerald-300 text-slate-950 font-display font-semibold text-sm flex items-center justify-center gap-2 active:scale-[0.98] transition-all whitespace-nowrap focus-visible:outline-2 focus-visible:outline-emerald-200"
+            className="w-full h-12 rounded-xl bg-emerald-400 hover:bg-emerald-300 text-slate-950 font-display font-semibold text-sm flex items-center justify-center gap-2 active:scale-[0.98] transition-all whitespace-nowrap focus-visible:outline-2 focus-visible:outline-emerald-200"
           >
             <span>{isAllComplete ? 'Sector Atlas' : `Sector ${String(nextLevelId).padStart(2, '0')}`}</span>
             <ArrowRight className="w-4 h-4" />
           </button>
+
+          <div className="grid grid-cols-2 gap-2.5">
+            <button
+              type="button"
+              onClick={onReplay}
+              className="h-11 px-3 rounded-xl bg-slate-800/90 hover:bg-slate-700 text-slate-200 text-sm font-medium flex items-center justify-center gap-2 transition-colors whitespace-nowrap focus-visible:outline-2 focus-visible:outline-sky-400"
+            >
+              <RotateCcw className="w-4 h-4" />
+              <span>Replay</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={onReturnTitle}
+              className="h-11 px-3 rounded-xl bg-slate-800/90 hover:bg-slate-700 text-slate-200 text-sm font-medium flex items-center justify-center gap-2 transition-colors whitespace-nowrap focus-visible:outline-2 focus-visible:outline-sky-400"
+            >
+              <Home className="w-4 h-4" />
+              <span>Home</span>
+            </button>
+          </div>
         </div>
       </div>
     </div>

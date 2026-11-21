@@ -79,6 +79,7 @@ export interface LevelRecord {
 export interface SaveData {
   currentLevelId: number;
   muted: boolean;
+  musicMuted: boolean;
   lowPower: boolean;
   records: Record<number, LevelRecord>;
 }

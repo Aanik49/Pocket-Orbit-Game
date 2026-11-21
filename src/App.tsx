@@ -3,6 +3,7 @@ import { GameHud } from './components/GameHud';
 import { GameOverModal, PauseModal, VictoryModal } from './components/GameModals';
 import { LevelSelectModal } from './components/LevelSelectModal';
 import { OrbitCanvas, OrbitCanvasHandle } from './components/OrbitCanvas';
+import { SplashScreen } from './components/SplashScreen';
 import { TitleOverlay } from './components/TitleOverlay';
 import { spaceAudio } from './game/audio';
 import { getChapterForLevel, getLevelById } from './game/levels';
@@ -20,9 +21,11 @@ export default function App() {
   const [saveData, setSaveData] = useState<SaveData>(() => {
     const loaded = loadSaveData();
     spaceAudio.setMuted(loaded.muted);
+    spaceAudio.setMusicMuted(loaded.musicMuted);
     return loaded;
   });
 
+  const [showSplash, setShowSplash] = useState(true);
   const [screen, setScreen] = useState<GameScreen>('TITLE');
   const [activeLevelId, setActiveLevelId] = useState<number>(() => saveData.currentLevelId);
   const [showLevelSelect, setShowLevelSelect] = useState(false);
@@ -51,6 +54,9 @@ export default function App() {
   const showLevelSelectRef = useRef<boolean>(showLevelSelect);
   showLevelSelectRef.current = showLevelSelect;
 
+  const showSplashRef = useRef<boolean>(showSplash);
+  showSplashRef.current = showSplash;
+
   const activeLevelIdRef = useRef<number>(activeLevelId);
   activeLevelIdRef.current = activeLevelId;
 
@@ -62,6 +68,32 @@ export default function App() {
     canvasRef.current?.loadLevel(activeLevelId, 'TITLE');
     // Only on mount
     // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Unlock calm ambient music on first user gesture & suspend when backgrounded
+  useEffect(() => {
+    const unlockOnce = () => {
+      spaceAudio.unlock();
+    };
+
+    const onVisibilityChange = () => {
+      if (document.hidden) {
+        spaceAudio.suspendForBackground();
+      } else {
+        spaceAudio.resumeFromBackground();
+      }
+    };
+
+    window.addEventListener('pointerdown', unlockOnce, { passive: true });
+    window.addEventListener('keydown', unlockOnce, { passive: true });
+    document.addEventListener('visibilitychange', onVisibilityChange);
+
+    return () => {
+      window.removeEventListener('pointerdown', unlockOnce);
+      window.removeEventListener('keydown', unlockOnce);
+      document.removeEventListener('visibilitychange', onVisibilityChange);
+      spaceAudio.stopMusic();
+    };
   }, []);
 
   const launchLevel = useCallback((levelId: number) => {
@@ -125,6 +157,19 @@ export default function App() {
     });
   }, []);
 
+  const handleToggleMusic = useCallback(() => {
+    setSaveData((prev) => {
+      const musicMuted = !prev.musicMuted;
+      spaceAudio.setMusicMuted(musicMuted);
+      if (!musicMuted) {
+        spaceAudio.unlock();
+      }
+      const next = { ...prev, musicMuted };
+      persistSaveData(next);
+      return next;
+    });
+  }, []);
+
   const handleToggleLowPower = useCallback(() => {
     setSaveData((prev) => {
       const next = { ...prev, lowPower: !prev.lowPower };
@@ -134,7 +179,7 @@ export default function App() {
   }, []);
 
   const handlePointerTap = useCallback(() => {
-    if (showLevelSelectRef.current) return;
+    if (showSplashRef.current || showLevelSelectRef.current) return;
     if (screenRef.current === 'PLAYING') {
       spaceAudio.unlock();
       canvasRef.current?.shiftOrbit();
@@ -182,6 +227,11 @@ export default function App() {
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.repeat || heldKeys.has(e.code)) return;
       heldKeys.add(e.code);
+
+      if (showSplashRef.current) {
+        setShowSplash(false);
+        return;
+      }
 
       if (e.code === 'Escape') {
         if (showLevelSelectRef.current) {
@@ -240,8 +290,15 @@ export default function App() {
     };
   }, [handleNextLevel, handlePause, handleResume, handleRetry, handleStartFromTitle]);
 
+  const handleSplashDone = useCallback(() => {
+    setShowSplash(false);
+  }, []);
+
   return (
     <main className="relative w-screen h-[100dvh] overflow-hidden bg-[#050814] select-none">
+      {/* Animated Launch Splash Screen */}
+      {showSplash && <SplashScreen onFinish={handleSplashDone} />}
+
       {/* Isolated 60fps Orbital Canvas */}
       <OrbitCanvas
         ref={canvasRef}
@@ -260,9 +317,11 @@ export default function App() {
           completedCount={stats.completedCount}
           totalStars={stats.totalStars}
           muted={saveData.muted}
+          musicMuted={saveData.musicMuted}
           onStart={handleStartFromTitle}
           onOpenLevels={() => setShowLevelSelect(true)}
           onToggleMute={handleToggleMute}
+          onToggleMusic={handleToggleMusic}
         />
       )}
 
@@ -272,8 +331,10 @@ export default function App() {
           level={activeLevel}
           hud={hud}
           muted={saveData.muted}
+          musicMuted={saveData.musicMuted}
           onPause={handlePause}
           onToggleMute={handleToggleMute}
+          onToggleMusic={handleToggleMusic}
         />
       )}
 
@@ -309,6 +370,7 @@ export default function App() {
           onReplay={handleRetry}
           onNext={handleNextLevel}
           onOpenLevels={() => setShowLevelSelect(true)}
+          onReturnTitle={handleReturnTitle}
         />
       )}
 

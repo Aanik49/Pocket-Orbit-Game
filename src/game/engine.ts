@@ -640,8 +640,8 @@ export class OrbitEngine {
     const satY = this.centerY + Math.sin(this.satAngle) * this.satCurrentRadius;
     this.recordTrail(satX, satY);
 
-    // 4. Collectible stars
-    const starPickupRadius = Math.max(20, this.outerRadius * 0.155);
+    // 4. Collectible stars (generous touch-friendly pickup radius)
+    const starPickupRadius = Math.max(23, this.outerRadius * 0.17);
     for (let i = 0; i < this.stars.length; i++) {
       const s = this.stars[i];
       if (s.collected) continue;
@@ -673,7 +673,7 @@ export class OrbitEngine {
     }
 
     // 5. Space Junk Hazards & forgiving hitbox collision
-    const satHitRadius = Math.max(6.5, this.outerRadius * 0.048);
+    const satHitRadius = Math.max(5.8, this.outerRadius * 0.042);
     const sizeScale = this.outerRadius / 148;
     for (let i = 0; i < this.hazards.length; i++) {
       const h = this.hazards[i];
@@ -683,7 +683,7 @@ export class OrbitEngine {
       const hr = h.orbit === 0 ? this.innerRadius : this.outerRadius;
       const hx = this.centerX + Math.cos(h.angle) * hr;
       const hy = this.centerY + Math.sin(h.angle) * hr;
-      const hazardHitRadius = h.size * sizeScale * 0.72;
+      const hazardHitRadius = h.size * sizeScale * 0.64;
 
       if (Math.hypot(satX - hx, satY - hy) < satHitRadius + hazardHitRadius) {
         this.triggerCollision(satX, satY);
@@ -704,7 +704,7 @@ export class OrbitEngine {
       const pr = this.portal.orbit === 0 ? this.innerRadius : this.outerRadius;
       const px = this.centerX + Math.cos(this.portal.angle) * pr;
       const py = this.centerY + Math.sin(this.portal.angle) * pr;
-      const portalHitRadius = Math.max(22, this.outerRadius * 0.165);
+      const portalHitRadius = Math.max(24, this.outerRadius * 0.18);
 
       if (Math.hypot(satX - px, satY - py) < portalHitRadius) {
         this.satWarpProgress = 0.01;

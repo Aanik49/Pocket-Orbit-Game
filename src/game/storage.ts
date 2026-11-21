@@ -5,6 +5,7 @@ const STORAGE_KEY = 'pocket_orbit_save_v1';
 const DEFAULT_SAVE: SaveData = {
   currentLevelId: 1,
   muted: false,
+  musicMuted: false,
   lowPower: false,
   records: {},
 };
@@ -102,6 +103,7 @@ export function loadSaveData(): SaveData {
     return {
       currentLevelId,
       muted: Boolean(parsed.muted),
+      musicMuted: Boolean(parsed.musicMuted),
       lowPower: Boolean(parsed.lowPower),
       records,
     };

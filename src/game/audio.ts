@@ -1,18 +1,39 @@
 /**
- * Procedural Zen Web Audio synthesizer for Pocket Orbit.
- * Lightweight, zero external assets, graceful fallback for older mobile browsers.
+ * Procedural Zen Web Audio synthesizer + Calm Ambient Music engine for Pocket Orbit.
+ * Lightweight, zero external audio files, works offline across Android WebViews & browsers.
  */
 export class SpaceAudio {
   private ctx: AudioContext | null = null;
-  private muted = false;
+  private sfxMuted = false;
+  private musicMuted = false;
   private lastGravityHum = 0;
 
+  // Ambient music scheduler state
+  private musicMasterGain: GainNode | null = null;
+  private musicTimer: number | null = null;
+  private musicPlaying = false;
+  private musicStep = 0;
+  private backgroundSuspended = false;
+
   setMuted(muted: boolean): void {
-    this.muted = muted;
+    this.sfxMuted = muted;
   }
 
   isMuted(): boolean {
-    return this.muted;
+    return this.sfxMuted;
+  }
+
+  setMusicMuted(muted: boolean): void {
+    this.musicMuted = muted;
+    if (muted) {
+      this.stopMusic();
+    } else if (this.ctx && !this.backgroundSuspended) {
+      this.startMusic();
+    }
+  }
+
+  isMusicMuted(): boolean {
+    return this.musicMuted;
   }
 
   unlock(): void {
@@ -28,14 +49,142 @@ export class SpaceAudio {
       if (this.ctx && this.ctx.state === 'suspended') {
         this.ctx.resume().catch(() => {});
       }
+      if (this.ctx && !this.musicMuted && !this.musicPlaying && !this.backgroundSuspended) {
+        this.startMusic();
+      }
     } catch {
       // Gracefully ignore audio initialization failures on restricted WebViews
     }
   }
 
+  /** Pause ambient music when app/tab goes to background to conserve battery */
+  suspendForBackground(): void {
+    this.backgroundSuspended = true;
+    this.stopMusic();
+  }
+
+  /** Resume ambient music when returning to foreground if enabled */
+  resumeFromBackground(): void {
+    this.backgroundSuspended = false;
+    if (this.ctx && !this.musicMuted) {
+      if (this.ctx.state === 'suspended') {
+        this.ctx.resume().catch(() => {});
+      }
+      this.startMusic();
+    }
+  }
+
+  /** Gentle generative pentatonic ambient space-zen music loop */
+  startMusic(): void {
+    if (this.musicMuted || this.musicPlaying || this.backgroundSuspended) return;
+    if (!this.ctx) return;
+
+    this.musicPlaying = true;
+
+    const now = this.ctx.currentTime;
+    const master = this.ctx.createGain();
+    master.gain.setValueAtTime(0.0001, now);
+    master.gain.linearRampToValueAtTime(0.055, now + 1.4);
+    master.connect(this.ctx.destination);
+    this.musicMasterGain = master;
+
+    const scheduleStep = () => {
+      if (!this.musicPlaying || !this.ctx || !this.musicMasterGain || this.musicMuted) return;
+
+      const t = this.ctx.currentTime;
+      const step = this.musicStep++;
+
+      // Warm celestial progression (Dmaj9 -> Bm7 -> Gmaj7 -> A6sus4)
+      const bassNotes = [146.83, 123.47, 98.0, 110.0]; // D3, B2, G2, A2
+      const padChords: number[][] = [
+        [293.66, 369.99, 440.0], // D4, F#4, A4
+        [246.94, 293.66, 369.99], // B3, D4, F#4
+        [196.0, 293.66, 369.99], // G3, D4, F#4
+        [220.0, 293.66, 329.63], // A3, D4, E4
+      ];
+      const chimeNotes = [587.33, 659.25, 739.99, 880.0, 587.33, 493.88, 659.25, 440.0];
+
+      // Trigger a soft warm harmonic pad every 2 steps (~4.8s)
+      if (step % 2 === 0) {
+        const chordIdx = Math.floor(step / 2) % padChords.length;
+        const bass = bassNotes[chordIdx];
+        const chord = padChords[chordIdx];
+
+        this.playAmbientVoice(bass, t, 5.2, 0.34, 'sine');
+        chord.forEach((freq, idx) => {
+          this.playAmbientVoice(freq, t + idx * 0.14, 4.9, 0.16, 'sine');
+        });
+      }
+
+      // Trigger a quiet floating bell note every step (~2.4s)
+      const melodyFreq = chimeNotes[step % chimeNotes.length];
+      this.playAmbientVoice(melodyFreq, t + 0.35, 2.8, 0.11, 'triangle');
+    };
+
+    scheduleStep();
+    this.musicTimer = window.setInterval(scheduleStep, 2400);
+  }
+
+  private playAmbientVoice(
+    freq: number,
+    startTime: number,
+    duration: number,
+    peakGain: number,
+    type: OscillatorType
+  ): void {
+    if (!this.ctx || !this.musicMasterGain) return;
+    const osc = this.ctx.createOscillator();
+    const filter = this.ctx.createBiquadFilter();
+    const env = this.ctx.createGain();
+
+    osc.type = type;
+    osc.frequency.setValueAtTime(freq, startTime);
+
+    filter.type = 'lowpass';
+    filter.frequency.setValueAtTime(920, startTime);
+
+    env.gain.setValueAtTime(0.0001, startTime);
+    env.gain.linearRampToValueAtTime(peakGain, startTime + duration * 0.32);
+    env.gain.exponentialRampToValueAtTime(0.0001, startTime + duration);
+
+    osc.connect(filter);
+    filter.connect(env);
+    env.connect(this.musicMasterGain);
+
+    osc.start(startTime);
+    osc.stop(startTime + duration + 0.05);
+  }
+
+  stopMusic(): void {
+    this.musicPlaying = false;
+    if (this.musicTimer !== null) {
+      window.clearInterval(this.musicTimer);
+      this.musicTimer = null;
+    }
+    if (this.musicMasterGain && this.ctx) {
+      try {
+        const now = this.ctx.currentTime;
+        const g = this.musicMasterGain;
+        g.gain.cancelScheduledValues(now);
+        g.gain.setValueAtTime(Math.max(0.0001, g.gain.value), now);
+        g.gain.exponentialRampToValueAtTime(0.0001, now + 0.25);
+        window.setTimeout(() => {
+          try {
+            g.disconnect();
+          } catch {
+            // ignore
+          }
+        }, 300);
+      } catch {
+        // ignore
+      }
+      this.musicMasterGain = null;
+    }
+  }
+
   /** Soft filtered tone when shifting between inner (higher, brisk) and outer (lower, calm) orbits */
   playShift(toInner: boolean): void {
-    if (this.muted) return;
+    if (this.sfxMuted) return;
     this.unlock();
     if (!this.ctx) return;
 
@@ -64,11 +213,10 @@ export class SpaceAudio {
 
   /** Pentatonic celesta chime on collecting a star */
   playStar(starIndex: number): void {
-    if (this.muted) return;
+    if (this.sfxMuted) return;
     this.unlock();
     if (!this.ctx) return;
 
-    // D major pentatonic ascent: D5, E5, F#5, A5, D6
     const scale = [587.33, 659.25, 739.99, 880.0, 1174.66];
     const freq = scale[Math.min(starIndex, scale.length - 1)];
     const now = this.ctx.currentTime;
@@ -105,7 +253,7 @@ export class SpaceAudio {
 
   /** Ethereal harmonic bloom when wormhole opens */
   playPortalOpen(): void {
-    if (this.muted) return;
+    if (this.sfxMuted) return;
     this.unlock();
     if (!this.ctx) return;
 
@@ -132,7 +280,7 @@ export class SpaceAudio {
 
   /** Subtle resonant hum while passing through a moon's gravity well */
   playGravityHum(isBoost: boolean): void {
-    if (this.muted) return;
+    if (this.sfxMuted) return;
     this.unlock();
     if (!this.ctx) return;
 
@@ -161,7 +309,7 @@ export class SpaceAudio {
 
   /** Muted tactile thud on orbital debris impact */
   playCrash(): void {
-    if (this.muted) return;
+    if (this.sfxMuted) return;
     this.unlock();
     if (!this.ctx) return;
 
@@ -193,7 +341,7 @@ export class SpaceAudio {
 
   /** Warm ascending chord on wormhole traversal */
   playVictory(): void {
-    if (this.muted) return;
+    if (this.sfxMuted) return;
     this.unlock();
     if (!this.ctx) return;
 

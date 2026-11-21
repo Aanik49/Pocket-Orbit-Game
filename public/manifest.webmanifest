@@ -1,12 +1,14 @@
 {
+  "id": "./",
   "name": "Pocket Orbit",
   "short_name": "Pocket Orbit",
   "description": "A zen minimalist orbital timing game across 50 handcrafted sectors.",
   "start_url": "./",
+  "scope": "./",
   "display": "standalone",
   "orientation": "portrait",
-  "background_color": "#060A16",
-  "theme_color": "#060A16",
+  "background_color": "#070B1E",
+  "theme_color": "#070B1E",
   "categories": ["games"],
   "icons": [
     {
