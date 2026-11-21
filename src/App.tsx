@@ -6,7 +6,7 @@ import { OrbitCanvas, OrbitCanvasHandle } from './components/OrbitCanvas';
 import { SplashScreen } from './components/SplashScreen';
 import { TitleOverlay } from './components/TitleOverlay';
 import { spaceAudio } from './game/audio';
-import { getChapterForLevel, getLevelById } from './game/levels';
+import { calculateCompletionStars, getChapterForLevel, getLevelById } from './game/levels';
 import {
   getCompletionStats,
   getNextUnlockedLevelId,
@@ -198,12 +198,13 @@ export default function App() {
       starsEarned: number;
     }) => {
       const lvl = getLevelById(result.levelId);
+      const earnedRating = calculateCompletionStars(result.shiftCount, lvl.parShifts);
       const { next, isNewBestTime, isNewBestShifts } = recordLevelCompletion(
         saveDataRef.current,
         result.levelId,
         result.flightTime,
         result.shiftCount,
-        result.starsEarned
+        earnedRating
       );
       setSaveData(next);
       setRunSummary({
@@ -211,7 +212,7 @@ export default function App() {
         flightTime: result.flightTime,
         shiftCount: result.shiftCount,
         parShifts: lvl.parShifts,
-        starsEarned: result.starsEarned,
+        starsEarned: earnedRating,
         isNewBestTime,
         isNewBestShifts,
       });

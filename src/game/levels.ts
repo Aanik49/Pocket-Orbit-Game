@@ -384,7 +384,7 @@ function buildChapterOneLevels(): LevelConfig[] {
       startAngle: baseStart,
       innerSpeed: 1.5,
       outerSpeed: 0.8,
-      parShifts: 4,
+      parShifts: 5,
       stars: [
         { orbit: 0, angle: 0.15 },
         { orbit: 1, angle: 2.05 },
@@ -860,4 +860,16 @@ export function getLevelById(id: number): LevelConfig {
 export function getChapterForLevel(id: number): ChapterMeta {
   const idx = Math.max(0, Math.min(CHAPTERS.length - 1, Math.ceil(id / 10) - 1));
   return CHAPTERS[idx];
+}
+
+/**
+ * 1-3 star mastery rating based on orbit shift efficiency vs level par:
+ * - 3 stars: cleared within parShifts
+ * - 2 stars: cleared within parShifts + 3
+ * - 1 star: cleared in more than parShifts + 3 shifts
+ */
+export function calculateCompletionStars(shiftCount: number, parShifts: number): number {
+  if (shiftCount <= parShifts) return 3;
+  if (shiftCount <= parShifts + 3) return 2;
+  return 1;
 }

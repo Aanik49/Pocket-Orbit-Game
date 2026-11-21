@@ -113,23 +113,83 @@ export const GameHud: React.FC<GameHudProps> = ({
         </div>
       </header>
 
-      {/* Bottom Quiet Flight State Readout */}
-      <footer className="w-full max-w-xl mx-auto flex flex-col items-center gap-1.5 pb-1">
-        <div className="text-xs tracking-wide text-center">
-          {hud.portalActive ? (
-            <span className="font-medium text-emerald-300">
-              Wormhole open on {hud.portalOrbit === 0 ? 'Inner' : 'Outer'} ring
-            </span>
-          ) : level.id === 1 && hud.shiftCount === 0 ? (
-            <span className="text-amber-200/90">
-              Tap anywhere to shift between fast inner and slow outer rings
-            </span>
-          ) : (
-            <span className="text-slate-300/85">
-              Collect {remaining} {remaining === 1 ? 'star' : 'stars'} to open wormhole
-            </span>
-          )}
-        </div>
+      {/* Bottom Quiet Tutorial Prompt (Levels 1 & 2) + Flight State Readout */}
+      <footer className="w-full max-w-xl mx-auto flex flex-col items-center gap-2 pb-1">
+        {level.id === 1 && (
+          <div
+            aria-live="polite"
+            className="px-4 py-2 rounded-xl bg-[#090F20]/82 border border-sky-400/25 text-center max-w-[300px] sm:max-w-sm transition-opacity duration-200"
+          >
+            {hud.portalActive ? (
+              <>
+                <p className="text-xs font-medium text-emerald-300">
+                  Wormhole open on the {hud.portalOrbit === 0 ? 'inner' : 'outer'} ring
+                </p>
+                <p className="text-[11px] text-slate-400 mt-0.5">
+                  Tap to align your orbit and pass through
+                </p>
+              </>
+            ) : hud.shiftCount === 0 ? (
+              <>
+                <p className="text-xs font-medium text-amber-200">
+                  Tap anywhere to shift between orbits
+                </p>
+                <p className="text-[11px] text-slate-300/85 mt-0.5">
+                  Inner ring moves fast · Outer ring moves slow
+                </p>
+              </>
+            ) : (
+              <>
+                <p className="text-xs font-medium text-sky-200">
+                  Collect all {hud.totalStars} stars to open the wormhole
+                </p>
+                <p className="text-[11px] text-slate-400 mt-0.5">
+                  Dodge the red-rimmed rock by shifting lanes early
+                </p>
+              </>
+            )}
+          </div>
+        )}
+
+        {level.id === 2 && (
+          <div
+            aria-live="polite"
+            className="px-4 py-2 rounded-xl bg-[#090F20]/82 border border-sky-400/20 text-center max-w-[300px] sm:max-w-sm transition-opacity duration-200"
+          >
+            {hud.portalActive ? (
+              <p className="text-xs font-medium text-emerald-300">
+                Wormhole open — shift to the {hud.portalOrbit === 0 ? 'inner' : 'outer'} ring
+              </p>
+            ) : hud.shiftCount === 0 ? (
+              <>
+                <p className="text-xs font-medium text-amber-200">
+                  Time your tap before reaching obstacles
+                </p>
+                <p className="text-[11px] text-slate-300/85 mt-0.5">
+                  Use the inner ring to speed up or outer ring to wait
+                </p>
+              </>
+            ) : (
+              <p className="text-xs text-slate-300/90">
+                Fewer orbit shifts earn up to 3 mastery stars
+              </p>
+            )}
+          </div>
+        )}
+
+        {level.id > 2 && (
+          <div className="text-xs tracking-wide text-center">
+            {hud.portalActive ? (
+              <span className="font-medium text-emerald-300">
+                Wormhole open on {hud.portalOrbit === 0 ? 'Inner' : 'Outer'} ring
+              </span>
+            ) : (
+              <span className="text-slate-300/85">
+                Collect {remaining} {remaining === 1 ? 'star' : 'stars'} to open wormhole
+              </span>
+            )}
+          </div>
+        )}
 
         <div className="flex items-center justify-center gap-2.5 text-[11px] sm:text-xs font-mono-num">
           <span className={isInner ? 'text-amber-300 font-semibold' : 'text-sky-300 font-semibold'}>

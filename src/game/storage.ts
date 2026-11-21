@@ -137,9 +137,12 @@ export function recordLevelCompletion(
   const isNewBestTime = existing.bestTime === null || flightTime < existing.bestTime;
   const isNewBestShifts = existing.bestShifts === null || shiftCount < existing.bestShifts;
 
+  const normalizedStars = Math.max(1, Math.min(3, Math.round(starsEarned)));
+  const prevStars = Math.min(3, existing.stars || 0);
+
   const updatedRecord: LevelRecord = {
     completed: true,
-    stars: Math.max(existing.stars, starsEarned),
+    stars: Math.max(prevStars, normalizedStars),
     bestTime: isNewBestTime ? Number(flightTime.toFixed(2)) : existing.bestTime,
     bestShifts: isNewBestShifts ? shiftCount : existing.bestShifts,
   };

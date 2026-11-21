@@ -112,11 +112,12 @@ export const LevelSelectModal: React.FC<LevelSelectModalProps> = ({
           </span>
         </div>
 
-        {/* 10-Level Grid: clean number and title only, locked chapters show lock icon */}
+        {/* 10-Level Grid: number + small completion stars above title, locked chapters show lock icon */}
         <div className="min-h-0 flex-1 grid grid-cols-2 gap-2 overflow-y-auto py-0.5">
           {chapterLevels.map((lvl) => {
             const rec = records[lvl.id];
             const isSelected = lvl.id === currentLevelId && chapterUnlocked;
+            const earnedStars = rec?.completed ? Math.max(1, Math.min(3, rec.stars || 1)) : 0;
 
             return (
               <button
@@ -129,7 +130,7 @@ export const LevelSelectModal: React.FC<LevelSelectModalProps> = ({
                     onSelectLevel(lvl.id);
                   }
                 }}
-                className={`min-h-[54px] px-3.5 py-2.5 rounded-xl border text-left flex flex-col justify-center transition-colors focus-visible:outline-2 focus-visible:outline-sky-400 ${
+                className={`min-h-[54px] px-3 py-2.5 rounded-xl border text-left flex flex-col justify-center overflow-hidden transition-colors focus-visible:outline-2 focus-visible:outline-sky-400 ${
                   !chapterUnlocked
                     ? 'bg-[#070C19] border-slate-800/70 opacity-60 cursor-not-allowed'
                     : isSelected
@@ -139,14 +140,38 @@ export const LevelSelectModal: React.FC<LevelSelectModalProps> = ({
                         : 'bg-[#080E1D] border-slate-800/90 hover:border-slate-700 active:scale-[0.98]'
                 }`}
               >
-                <div className="flex items-center justify-between gap-2 w-full">
-                  <span
-                    className={`font-mono-num text-xs font-semibold ${
-                      chapterUnlocked ? 'text-sky-300' : 'text-slate-500'
-                    }`}
-                  >
-                    {String(lvl.id).padStart(2, '0')}
-                  </span>
+                <div className="flex items-center justify-between gap-1.5 w-full min-w-0">
+                  <div className="flex items-center gap-1.5 min-w-0">
+                    <span
+                      className={`font-mono-num text-xs font-semibold shrink-0 ${
+                        chapterUnlocked ? 'text-sky-300' : 'text-slate-500'
+                      }`}
+                    >
+                      {String(lvl.id).padStart(2, '0')}
+                    </span>
+
+                    {chapterUnlocked && rec?.completed && (
+                      <span
+                        className="inline-flex items-center gap-0.5 shrink-0"
+                        aria-label={`${earnedStars} of 3 stars`}
+                      >
+                        {[1, 2, 3].map((slot) => (
+                          <svg
+                            key={slot}
+                            viewBox="0 0 20 20"
+                            className={`w-2.5 h-2.5 shrink-0 ${
+                              slot <= earnedStars ? 'text-amber-300' : 'text-slate-600/80'
+                            }`}
+                          >
+                            <path
+                              fill="currentColor"
+                              d="M10 1.5l2.1 5.9 6.2.4-4.8 3.9 1.6 6.1L10 14.3l-5.1 3.5 1.6-6.1-4.8-3.9 6.2-.4L10 1.5z"
+                            />
+                          </svg>
+                        ))}
+                      </span>
+                    )}
+                  </div>
 
                   {!chapterUnlocked ? (
                     <Lock className="w-3.5 h-3.5 text-slate-500 shrink-0" aria-label="Locked" />
@@ -156,7 +181,7 @@ export const LevelSelectModal: React.FC<LevelSelectModalProps> = ({
                 </div>
 
                 <div
-                  className={`font-display text-sm font-medium truncate mt-0.5 ${
+                  className={`font-display text-sm font-medium truncate mt-0.5 w-full ${
                     chapterUnlocked ? 'text-slate-100' : 'text-slate-400'
                   }`}
                 >

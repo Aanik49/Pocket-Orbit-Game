@@ -194,7 +194,6 @@ export const VictoryModal: React.FC<VictoryModalProps> = ({
   onReturnTitle,
 }) => {
   const isAllComplete = nextLevelId === null;
-  const underPar = summary.shiftCount <= summary.parShifts;
 
   return (
     <div
@@ -211,15 +210,24 @@ export const VictoryModal: React.FC<VictoryModalProps> = ({
           {level.name}
         </h2>
         <p className="text-xs text-slate-400 mt-1">
-          {underPar
-            ? `Graceful trajectory · Within par (${summary.parShifts} shifts)`
-            : 'Wormhole synchronized'}
+          {summary.starsEarned >= 3
+            ? `Master trajectory · Within par (${summary.parShifts} shifts)`
+            : `Clear in ${summary.parShifts} shifts or fewer for 3 stars`}
         </p>
 
-        {/* Stars Earned Row */}
-        <div className="flex items-center justify-center gap-2 mt-4">
-          {Array.from({ length: summary.starsEarned }).map((_, i) => (
-            <svg key={i} viewBox="0 0 20 20" className="w-7 h-7 text-amber-300">
+        {/* 3-Star Mastery Rating Row */}
+        <div
+          className="flex items-center justify-center gap-2 mt-4"
+          aria-label={`${summary.starsEarned} of 3 stars earned`}
+        >
+          {[1, 2, 3].map((slot) => (
+            <svg
+              key={slot}
+              viewBox="0 0 20 20"
+              className={`w-7 h-7 ${
+                slot <= summary.starsEarned ? 'text-amber-300' : 'text-slate-700'
+              }`}
+            >
               <path
                 fill="currentColor"
                 d="M10 1.5l2.1 5.9 6.2.4-4.8 3.9 1.6 6.1L10 14.3l-5.1 3.5 1.6-6.1-4.8-3.9 6.2-.4L10 1.5z"
