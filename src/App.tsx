@@ -8,6 +8,8 @@ import { spaceAudio } from './game/audio';
 import { getChapterForLevel, getLevelById } from './game/levels';
 import {
   getCompletionStats,
+  getNextUnlockedLevelId,
+  isLevelUnlocked,
   loadSaveData,
   persistSaveData,
   recordLevelCompletion,
@@ -63,6 +65,7 @@ export default function App() {
   }, []);
 
   const launchLevel = useCallback((levelId: number) => {
+    if (!isLevelUnlocked(levelId, saveDataRef.current.records)) return;
     spaceAudio.unlock();
     spaceAudio.playShift(true);
     setShowLevelSelect(false);
@@ -81,8 +84,12 @@ export default function App() {
   }, [launchLevel]);
 
   const handleNextLevel = useCallback(() => {
-    const nextId = activeLevelIdRef.current < 50 ? activeLevelIdRef.current + 1 : 1;
-    launchLevel(nextId);
+    const nextId = getNextUnlockedLevelId(activeLevelIdRef.current, saveDataRef.current.records);
+    if (nextId !== null) {
+      launchLevel(nextId);
+    } else {
+      setShowLevelSelect(true);
+    }
   }, [launchLevel]);
 
   const handlePause = useCallback(() => {
@@ -289,6 +296,7 @@ export default function App() {
           level={activeLevel}
           onRetry={handleRetry}
           onOpenLevels={() => setShowLevelSelect(true)}
+          onReturnTitle={handleReturnTitle}
         />
       )}
 
@@ -297,6 +305,7 @@ export default function App() {
         <VictoryModal
           level={activeLevel}
           summary={runSummary}
+          nextLevelId={getNextUnlockedLevelId(activeLevel.id, saveData.records)}
           onReplay={handleRetry}
           onNext={handleNextLevel}
           onOpenLevels={() => setShowLevelSelect(true)}

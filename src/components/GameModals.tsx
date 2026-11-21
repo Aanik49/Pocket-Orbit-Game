@@ -110,12 +110,14 @@ interface GameOverModalProps {
   level: LevelConfig;
   onRetry: () => void;
   onOpenLevels: () => void;
+  onReturnTitle: () => void;
 }
 
 export const GameOverModal: React.FC<GameOverModalProps> = ({
   level,
   onRetry,
   onOpenLevels,
+  onReturnTitle,
 }) => {
   return (
     <div
@@ -135,23 +137,35 @@ export const GameOverModal: React.FC<GameOverModalProps> = ({
           Shifting lanes a fraction earlier opens clean space around debris.
         </p>
 
-        <div className="flex items-center gap-2.5 mt-6">
-          <button
-            type="button"
-            onClick={onOpenLevels}
-            className="h-12 px-4 rounded-xl bg-slate-800/90 hover:bg-slate-700 text-slate-200 text-sm font-medium transition-colors whitespace-nowrap focus-visible:outline-2 focus-visible:outline-sky-400"
-          >
-            Sectors
-          </button>
-
+        <div className="flex flex-col gap-2.5 mt-6">
           <button
             type="button"
             onClick={onRetry}
-            className="flex-1 h-12 rounded-xl bg-rose-500 hover:bg-rose-400 text-white font-display font-semibold text-sm flex items-center justify-center gap-2 active:scale-[0.98] transition-all whitespace-nowrap focus-visible:outline-2 focus-visible:outline-rose-300"
+            className="w-full h-12 rounded-xl bg-rose-500 hover:bg-rose-400 text-white font-display font-semibold text-sm flex items-center justify-center gap-2 active:scale-[0.98] transition-all whitespace-nowrap focus-visible:outline-2 focus-visible:outline-rose-300"
           >
             <RotateCcw className="w-4 h-4" />
             <span>Retry Orbit</span>
           </button>
+
+          <div className="grid grid-cols-2 gap-2.5">
+            <button
+              type="button"
+              onClick={onOpenLevels}
+              className="h-11 px-3 rounded-xl bg-slate-800/90 hover:bg-slate-700 text-slate-200 text-sm font-medium flex items-center justify-center gap-2 transition-colors whitespace-nowrap focus-visible:outline-2 focus-visible:outline-sky-400"
+            >
+              <Layers className="w-4 h-4" />
+              <span>Sectors</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={onReturnTitle}
+              className="h-11 px-3 rounded-xl bg-slate-800/90 hover:bg-slate-700 text-slate-200 text-sm font-medium flex items-center justify-center gap-2 transition-colors whitespace-nowrap focus-visible:outline-2 focus-visible:outline-sky-400"
+            >
+              <Home className="w-4 h-4" />
+              <span>Title Screen</span>
+            </button>
+          </div>
         </div>
 
         <p className="text-[11px] text-slate-500 mt-3">Press Space or Enter to relaunch</p>
@@ -163,6 +177,7 @@ export const GameOverModal: React.FC<GameOverModalProps> = ({
 interface VictoryModalProps {
   level: LevelConfig;
   summary: RunSummary;
+  nextLevelId: number | null;
   onReplay: () => void;
   onNext: () => void;
   onOpenLevels: () => void;
@@ -171,11 +186,12 @@ interface VictoryModalProps {
 export const VictoryModal: React.FC<VictoryModalProps> = ({
   level,
   summary,
+  nextLevelId,
   onReplay,
   onNext,
   onOpenLevels,
 }) => {
-  const isFinalLevel = level.id >= 50;
+  const isAllComplete = nextLevelId === null;
   const underPar = summary.shiftCount <= summary.parShifts;
 
   return (
@@ -187,7 +203,7 @@ export const VictoryModal: React.FC<VictoryModalProps> = ({
     >
       <div className="animate-modal-enter w-full max-w-sm rounded-2xl bg-[#0B1224] border border-emerald-400/35 p-6 text-center">
         <div className="text-xs font-mono-num text-emerald-300">
-          {isFinalLevel ? 'All 50 Sectors Complete' : `Sector ${String(level.id).padStart(2, '0')} Cleared`}
+          {isAllComplete ? 'All 50 Sectors Complete' : `Sector ${String(level.id).padStart(2, '0')} Cleared`}
         </div>
         <h2 className="font-display text-2xl font-semibold text-white mt-1">
           {level.name}
@@ -243,10 +259,10 @@ export const VictoryModal: React.FC<VictoryModalProps> = ({
 
           <button
             type="button"
-            onClick={isFinalLevel ? onOpenLevels : onNext}
+            onClick={isAllComplete ? onOpenLevels : onNext}
             className="flex-1 h-12 rounded-xl bg-emerald-400 hover:bg-emerald-300 text-slate-950 font-display font-semibold text-sm flex items-center justify-center gap-2 active:scale-[0.98] transition-all whitespace-nowrap focus-visible:outline-2 focus-visible:outline-emerald-200"
           >
-            <span>{isFinalLevel ? 'Sector Atlas' : `Sector ${String(level.id + 1).padStart(2, '0')}`}</span>
+            <span>{isAllComplete ? 'Sector Atlas' : `Sector ${String(nextLevelId).padStart(2, '0')}`}</span>
             <ArrowRight className="w-4 h-4" />
           </button>
         </div>

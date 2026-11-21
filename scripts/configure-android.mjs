@@ -1,3 +1,4 @@
+import { execFileSync } from 'child_process';
 import fs from 'fs';
 import path from 'path';
 
@@ -39,27 +40,27 @@ if (fs.existsSync(buildGradlePath)) {
   console.log(`Set Android versionCode=${versionCode}, versionName=${versionName}`);
 }
 
-// 3. Apply deep obsidian cosmic theme (#060A16) to eliminate white launch flash
+// 3. Apply deep obsidian cosmic theme (#070B1E) to eliminate white launch flash
 if (fs.existsSync(stylesPath)) {
   const stylesXml = `<?xml version="1.0" encoding="utf-8"?>
 <resources>
     <style name="AppTheme" parent="Theme.AppCompat.Light.DarkActionBar">
-        <item name="colorPrimary">#060A16</item>
-        <item name="colorPrimaryDark">#060A16</item>
+        <item name="colorPrimary">#070B1E</item>
+        <item name="colorPrimaryDark">#070B1E</item>
         <item name="colorAccent">#FBBF24</item>
     </style>
 
     <style name="AppTheme.NoActionBar" parent="Theme.AppCompat.DayNight.NoActionBar">
         <item name="windowActionBar">false</item>
         <item name="windowNoTitle">true</item>
-        <item name="android:background">#060A16</item>
-        <item name="android:statusBarColor">#060A16</item>
-        <item name="android:navigationBarColor">#060A16</item>
+        <item name="android:background">#070B1E</item>
+        <item name="android:statusBarColor">#070B1E</item>
+        <item name="android:navigationBarColor">#070B1E</item>
     </style>
 
     <style name="AppTheme.NoActionBarLaunch" parent="Theme.SplashScreen">
-        <item name="android:background">#060A16</item>
-        <item name="windowSplashScreenBackground">#060A16</item>
+        <item name="android:background">#070B1E</item>
+        <item name="windowSplashScreenBackground">#070B1E</item>
         <item name="postSplashScreenTheme">@style/AppTheme.NoActionBar</item>
     </style>
 </resources>
@@ -68,68 +69,94 @@ if (fs.existsSync(stylesPath)) {
   console.log('Configured dark cosmic theme in styles.xml');
 }
 
-// 4. Write custom Pocket Orbit adaptive vector launcher icon
-const drawableDir = path.join(resDir, 'drawable');
+// 4. Install custom Pocket Orbit game icon across all Android launcher densities
+const sourceSquare = path.resolve('public', 'icon-512.png');
+const sourceAdaptive = path.resolve('public', 'icon-adaptive.png');
 const valuesDir = path.join(resDir, 'values');
-fs.mkdirSync(drawableDir, { recursive: true });
 fs.mkdirSync(valuesDir, { recursive: true });
 
-const iconBgXml = `<?xml version="1.0" encoding="utf-8"?>
+fs.writeFileSync(
+  path.join(valuesDir, 'ic_launcher_background.xml'),
+  `<?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="ic_launcher_background">#060A16</color>
+    <color name="ic_launcher_background">#070B1E</color>
 </resources>
-`;
-fs.writeFileSync(path.join(valuesDir, 'ic_launcher_background.xml'), iconBgXml, 'utf8');
+`,
+  'utf8'
+);
 
-const iconFgXml = `<?xml version="1.0" encoding="utf-8"?>
-<vector xmlns:android="http://schemas.android.com/apk/res/android"
-    android:width="108dp"
-    android:height="108dp"
-    android:viewportWidth="108"
-    android:viewportHeight="108">
+function hasImageMagick() {
+  try {
+    execFileSync('convert', ['-version'], { stdio: 'ignore' });
+    return true;
+  } catch {
+    return false;
+  }
+}
 
-    <!-- Outer cool cerulean orbital track -->
-    <path
-        android:pathData="M54,22 A32,32 0 1,1 53.99,22 Z"
-        android:strokeWidth="2.2"
-        android:strokeColor="#38BDF8"
-        android:strokeAlpha="0.55"
-        android:fillColor="#00000000" />
+function writeResizedPng(srcPath, destPath, sizePx, makeCircle = false) {
+  fs.mkdirSync(path.dirname(destPath), { recursive: true });
+  if (hasImageMagick()) {
+    if (makeCircle) {
+      const half = Math.floor(sizePx / 2);
+      execFileSync('convert', [
+        srcPath,
+        '-resize',
+        `${sizePx}x${sizePx}!`,
+        '(',
+        '-size',
+        `${sizePx}x${sizePx}`,
+        'xc:none',
+        '-fill',
+        'white',
+        '-draw',
+        `circle ${half},${half} ${half},0`,
+        ')',
+        '-alpha',
+        'set',
+        '-compose',
+        'DstIn',
+        '-composite',
+        destPath,
+      ]);
+    } else {
+      execFileSync('convert', [srcPath, '-resize', `${sizePx}x${sizePx}!`, destPath]);
+    }
+  } else {
+    fs.copyFileSync(srcPath, destPath);
+  }
+}
 
-    <!-- Inner warm amber orbital track -->
-    <path
-        android:pathData="M54,34 A20,20 0 1,1 53.99,34 Z"
-        android:strokeWidth="2.4"
-        android:strokeColor="#FBBF24"
-        android:strokeAlpha="0.85"
-        android:fillColor="#00000000" />
+if (fs.existsSync(sourceSquare)) {
+  const densities = [
+    { dir: 'mipmap-mdpi', legacy: 48, fg: 108 },
+    { dir: 'mipmap-hdpi', legacy: 72, fg: 162 },
+    { dir: 'mipmap-xhdpi', legacy: 96, fg: 216 },
+    { dir: 'mipmap-xxhdpi', legacy: 144, fg: 324 },
+    { dir: 'mipmap-xxxhdpi', legacy: 192, fg: 432 },
+  ];
 
-    <!-- Central cerulean planet -->
-    <path
-        android:pathData="M54,43 A11,11 0 1,1 53.99,43 Z"
-        android:fillColor="#38BDF8" />
+  const adaptiveSrc = fs.existsSync(sourceAdaptive) ? sourceAdaptive : sourceSquare;
 
-    <!-- Inner fast satellite (amber) -->
-    <path
-        android:pathData="M74,50 A4,4 0 1,1 73.99,50 Z"
-        android:fillColor="#FDE68A" />
+  for (const d of densities) {
+    const targetDir = path.join(resDir, d.dir);
+    writeResizedPng(sourceSquare, path.join(targetDir, 'ic_launcher.png'), d.legacy, false);
+    writeResizedPng(sourceSquare, path.join(targetDir, 'ic_launcher_round.png'), d.legacy, true);
+    writeResizedPng(adaptiveSrc, path.join(targetDir, 'ic_launcher_foreground.png'), d.fg, false);
+  }
 
-    <!-- Outer collectible star dot (ice blue) -->
-    <path
-        android:pathData="M31,29 A3.2,3.2 0 1,1 30.99,29 Z"
-        android:fillColor="#BAE6FD" />
-</vector>
-`;
-fs.writeFileSync(path.join(drawableDir, 'ic_launcher_foreground.xml'), iconFgXml, 'utf8');
-
-const anyDpiDir = path.join(resDir, 'mipmap-anydpi-v26');
-fs.mkdirSync(anyDpiDir, { recursive: true });
-const adaptiveIconXml = `<?xml version="1.0" encoding="utf-8"?>
+  // Ensure Android 8+ adaptive launcher XML uses the Pocket Orbit icon foreground & background
+  const anyDpiDir = path.join(resDir, 'mipmap-anydpi-v26');
+  fs.mkdirSync(anyDpiDir, { recursive: true });
+  const adaptiveIconXml = `<?xml version="1.0" encoding="utf-8"?>
 <adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
     <background android:drawable="@color/ic_launcher_background" />
-    <foreground android:drawable="@drawable/ic_launcher_foreground" />
+    <foreground android:drawable="@mipmap/ic_launcher_foreground" />
 </adaptive-icon>
 `;
-fs.writeFileSync(path.join(anyDpiDir, 'ic_launcher.xml'), adaptiveIconXml, 'utf8');
-fs.writeFileSync(path.join(anyDpiDir, 'ic_launcher_round.xml'), adaptiveIconXml, 'utf8');
-console.log('Generated custom Pocket Orbit adaptive vector icon');
+  fs.writeFileSync(path.join(anyDpiDir, 'ic_launcher.xml'), adaptiveIconXml, 'utf8');
+  fs.writeFileSync(path.join(anyDpiDir, 'ic_launcher_round.xml'), adaptiveIconXml, 'utf8');
+  console.log('Installed custom Pocket Orbit PNG game icon across all Android mipmap densities');
+} else {
+  console.warn('public/icon-512.png not found; keeping default launcher icon.');
+}

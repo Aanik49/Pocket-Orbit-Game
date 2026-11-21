@@ -34,37 +34,35 @@ export const TitleOverlay: React.FC<TitleOverlayProps> = ({
           'linear-gradient(180deg, rgba(5,8,20,0.72) 0%, rgba(5,8,20,0.06) 36%, rgba(5,8,20,0.08) 64%, rgba(5,8,20,0.88) 100%)',
       }}
     >
-      {/* Top quiet header row: bespoke SVG title lockup + mute toggle */}
+      {/* Top quiet header row: Game Icon + Title Lockup + mute toggle */}
       <div className="flex items-start justify-between gap-4 w-full max-w-2xl mx-auto">
-        <div className="flex flex-col">
-          {/* Bespoke inline SVG Title Lockup */}
-          <svg
-            viewBox="0 0 260 54"
-            className="h-11 sm:h-13 w-auto overflow-visible"
-            role="img"
-            aria-label="Pocket Orbit"
-          >
-            {/* Minimalist concentric orbital mark */}
-            <circle cx="24" cy="27" r="19" fill="none" stroke="#38BDF8" strokeOpacity="0.45" strokeWidth="1.25" strokeDasharray="3 4" />
-            <circle cx="24" cy="27" r="11.5" fill="none" stroke="#FBBF24" strokeOpacity="0.7" strokeWidth="1.4" />
-            <circle cx="24" cy="27" r="5" fill="#38BDF8" />
-            <circle cx="35.5" cy="27" r="2.6" fill="#FDE68A" />
-            <circle cx="10.5" cy="13.5" r="2" fill="#BAE6FD" />
-            <text
-              x="56"
-              y="35"
-              fill="#F8FAFC"
-              fontFamily="Outfit, sans-serif"
-              fontWeight="600"
-              fontSize="27"
-              letterSpacing="-0.02em"
-            >
+        <div className="flex items-center gap-3.5">
+          <div className="relative w-13 h-13 sm:w-14 sm:h-14 rounded-2xl overflow-hidden border border-sky-400/30 bg-[#070B1E] shrink-0 shadow-[0_6px_22px_rgba(2,6,23,0.65)] flex items-center justify-center">
+            <svg viewBox="0 0 48 48" className="w-10 h-10" aria-hidden="true">
+              <circle cx="24" cy="24" r="18" fill="none" stroke="#38BDF8" strokeOpacity="0.5" strokeWidth="1.5" />
+              <circle cx="24" cy="24" r="11" fill="none" stroke="#FBBF24" strokeOpacity="0.85" strokeWidth="1.6" />
+              <circle cx="24" cy="24" r="5" fill="#38BDF8" />
+              <circle cx="35" cy="24" r="2.6" fill="#FDE68A" />
+            </svg>
+            <img
+              src="./icon-192.png"
+              alt="Pocket Orbit game icon"
+              referrerPolicy="no-referrer"
+              className="absolute inset-0 w-full h-full object-cover"
+              onError={(e) => {
+                e.currentTarget.style.display = 'none';
+              }}
+            />
+          </div>
+
+          <div className="flex flex-col">
+            <h1 className="font-display text-2xl sm:text-3xl font-semibold tracking-tight text-white leading-none">
               Pocket Orbit
-            </text>
-          </svg>
-          <p className="mt-1 pl-14 text-xs sm:text-sm text-slate-300/85 tracking-wide">
-            Close is fast · Far is slow · 50 Sectors
-          </p>
+            </h1>
+            <p className="mt-1.5 text-xs sm:text-sm text-slate-300/85 tracking-wide">
+              Close is fast · Far is slow · 50 Sectors
+            </p>
+          </div>
         </div>
 
         <button
