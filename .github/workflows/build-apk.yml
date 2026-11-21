@@ -1,0 +1,78 @@
+name: Build Android APK
+
+on:
+  push:
+    branches: [main, master]
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      release_version:
+        description: 'Optional version name (e.g. 1.0.0)'
+        required: false
+        default: ''
+
+permissions:
+  contents: write
+
+jobs:
+  build-apk:
+    name: Build Pocket Orbit APK
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Set up Java 17 (Android Gradle)
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Install project dependencies
+        run: npm install --legacy-peer-deps
+
+      - name: Build web game bundle
+        run: npm run build
+
+      - name: Install Capacitor Android packager
+        run: npm install --legacy-peer-deps @capacitor/core@6 @capacitor/cli@6 @capacitor/android@6
+
+      - name: Generate Android project & sync assets
+        env:
+          APP_VERSION: ${{ github.event.inputs.release_version }}
+        run: |
+          rm -rf android
+          npx cap add android
+          node scripts/configure-android.mjs
+          npx cap sync android
+
+      - name: Compile Android APK with Gradle
+        working-directory: android
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleDebug --no-daemon
+
+      - name: Prepare APK artifact
+        run: |
+          mkdir -p apk-output
+          cp android/app/build/outputs/apk/debug/app-debug.apk "apk-output/PocketOrbit-v1.0.${GITHUB_RUN_NUMBER}.apk"
+          cp android/app/build/outputs/apk/debug/app-debug.apk "apk-output/PocketOrbit-latest.apk"
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: PocketOrbit-APK
+          path: apk-output/PocketOrbit-v1.0.${{ github.run_number }}.apk
+          retention-days: 30
+
+      - name: Attach APK to GitHub Release (on version tags)
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: apk-output/PocketOrbit-v1.0.${{ github.run_number }}.apk

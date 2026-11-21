@@ -1,0 +1,11 @@
+{
+  "appId": "com.pocketorbit.game",
+  "appName": "Pocket Orbit",
+  "webDir": "dist",
+  "backgroundColor": "#060A16",
+  "android": {
+    "backgroundColor": "#060A16",
+    "allowMixedContent": false,
+    "webContentsDebuggingEnabled": false
+  }
+}
