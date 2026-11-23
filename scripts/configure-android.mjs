@@ -112,7 +112,7 @@ fs.writeFileSync(
   path.join(valuesDir, 'ic_launcher_background.xml'),
   `<?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="ic_launcher_background">#070B1E</color>
+    <color name="ic_launcher_background">#232942</color>
 </resources>
 `,
   'utf8'
@@ -127,30 +127,30 @@ const adaptiveIconXml = `<?xml version="1.0" encoding="utf-8"?>
 fs.writeFileSync(path.join(anyDpiDir, 'ic_launcher.xml'), adaptiveIconXml, 'utf8');
 fs.writeFileSync(path.join(anyDpiDir, 'ic_launcher_round.xml'), adaptiveIconXml, 'utf8');
 
-// 6. Apply deep obsidian cosmic theme (#070B1E) + Android 12+ splash icon
+// 6. Apply matte midnight paper-navy theme (#232942) + Android 12+ splash icon
 const stylesXml = `<?xml version="1.0" encoding="utf-8"?>
 <resources>
     <style name="AppTheme" parent="Theme.AppCompat.Light.DarkActionBar">
-        <item name="colorPrimary">#070B1E</item>
-        <item name="colorPrimaryDark">#070B1E</item>
-        <item name="colorAccent">#FBBF24</item>
+        <item name="colorPrimary">#232942</item>
+        <item name="colorPrimaryDark">#232942</item>
+        <item name="colorAccent">#F3C24F</item>
     </style>
 
     <style name="AppTheme.NoActionBar" parent="Theme.AppCompat.DayNight.NoActionBar">
         <item name="windowActionBar">false</item>
         <item name="windowNoTitle">true</item>
-        <item name="android:background">#070B1E</item>
-        <item name="android:statusBarColor">#070B1E</item>
-        <item name="android:navigationBarColor">#070B1E</item>
+        <item name="android:background">#232942</item>
+        <item name="android:statusBarColor">#232942</item>
+        <item name="android:navigationBarColor">#232942</item>
     </style>
 
     <style name="AppTheme.NoActionBarLaunch" parent="Theme.SplashScreen">
         <item name="android:background">@drawable/splash</item>
-        <item name="windowSplashScreenBackground">#070B1E</item>
+        <item name="windowSplashScreenBackground">#232942</item>
         <item name="windowSplashScreenAnimatedIcon">@drawable/ic_splash_logo</item>
         <item name="postSplashScreenTheme">@style/AppTheme.NoActionBar</item>
     </style>
 </resources>
 `;
 fs.writeFileSync(stylesPath, stylesXml, 'utf8');
-console.log('Configured Pocket Orbit adaptive icons, splash icon, and cosmic theme.');
+console.log('Configured Pocket Orbit paper-craft adaptive icons, splash icon, and theme.');

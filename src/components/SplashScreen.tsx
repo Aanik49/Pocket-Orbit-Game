@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { PaperLogo } from './PaperLogo';
 
 interface SplashScreenProps {
   onFinish: () => void;
@@ -6,6 +7,7 @@ interface SplashScreenProps {
 
 export const SplashScreen: React.FC<SplashScreenProps> = ({ onFinish }) => {
   const [fadingOut, setFadingOut] = useState(false);
+  const [logoFailed, setLogoFailed] = useState(false);
 
   useEffect(() => {
     const fadeTimer = window.setTimeout(() => {
@@ -31,11 +33,11 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ onFinish }) => {
     <div
       onPointerDown={handleSkip}
       role="presentation"
-      className={`fixed inset-0 z-50 flex flex-col items-center justify-center bg-[#060A16] px-6 transition-opacity duration-350 cursor-pointer ${
+      className={`fixed inset-0 z-50 paper-cream-surface flex flex-col items-center justify-center px-6 transition-opacity duration-350 cursor-pointer ${
         fadingOut ? 'opacity-0 pointer-events-none' : 'opacity-100'
       }`}
     >
-      {/* Animated Orbital Ring + Game Icon */}
+      {/* Animated Stitched Twine Ring + Framed Paper Game Icon */}
       <div className="relative flex items-center justify-center">
         <svg
           viewBox="0 0 180 180"
@@ -45,21 +47,22 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ onFinish }) => {
           <circle
             cx="90"
             cy="90"
-            r="80"
+            r="78"
             fill="none"
-            stroke="#38BDF8"
-            strokeWidth="1.2"
-            strokeDasharray="6 8"
+            stroke="#8B765B"
+            strokeWidth="1.8"
+            strokeDasharray="6 7"
           />
-          <circle cx="90" cy="10" r="3.5" fill="#FDE68A" />
+          <circle cx="90" cy="12" r="5" fill="#C75C3B" />
+          <circle cx="90" cy="12" r="2.2" fill="#F5EFE2" />
         </svg>
 
-        <div className="animate-splash-icon relative w-24 h-24 sm:w-28 sm:h-28 rounded-3xl overflow-hidden border border-sky-400/35 bg-[#070B1E] shadow-[0_14px_42px_rgba(2,6,23,0.75)] flex items-center justify-center">
+        <div className="animate-splash-icon relative w-24 h-24 sm:w-28 sm:h-28 rounded-3xl overflow-hidden border-[3px] border-[#27324F] bg-[#1E243B] paper-cutout-shadow flex items-center justify-center">
           <svg viewBox="0 0 48 48" className="w-16 h-16" aria-hidden="true">
-            <circle cx="24" cy="24" r="18" fill="none" stroke="#38BDF8" strokeOpacity="0.5" strokeWidth="1.5" />
-            <circle cx="24" cy="24" r="11" fill="none" stroke="#FBBF24" strokeOpacity="0.85" strokeWidth="1.6" />
-            <circle cx="24" cy="24" r="5" fill="#38BDF8" />
-            <circle cx="35" cy="24" r="2.6" fill="#FDE68A" />
+            <circle cx="24" cy="24" r="18" fill="none" stroke="#E8D5B5" strokeWidth="1.5" strokeDasharray="3 3" />
+            <circle cx="24" cy="24" r="11" fill="none" stroke="#F3C24F" strokeWidth="1.6" strokeDasharray="3 3" />
+            <circle cx="24" cy="24" r="5.5" fill="#F08A7B" />
+            <circle cx="35" cy="24" r="2.8" fill="#FAF3E6" />
           </svg>
           <img
             src="./icon-512.png"
@@ -73,12 +76,23 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ onFinish }) => {
         </div>
       </div>
 
-      {/* Animated Game Name */}
-      <h1 className="animate-splash-title font-display text-3xl sm:text-4xl font-semibold tracking-tight text-white mt-7">
-        Pocket Orbit
-      </h1>
+      {/* Animated Layered Paper-Cut Game Name */}
+      <div className="animate-splash-title mt-7 relative flex items-center justify-center">
+        {logoFailed ? (
+          <PaperLogo className="w-56 sm:w-64 h-auto" />
+        ) : (
+          <img
+            src="./assets/lobby/logo.png"
+            alt="Pocket Orbit"
+            referrerPolicy="no-referrer"
+            draggable={false}
+            className="w-56 sm:w-64 h-auto object-contain"
+            onError={() => setLogoFailed(true)}
+          />
+        )}
+      </div>
 
-      <p className="animate-splash-sub text-xs sm:text-sm text-slate-400 tracking-wide mt-2">
+      <p className="animate-splash-sub text-xs sm:text-sm font-semibold text-[#5E5447] tracking-wide mt-2">
         Close is fast · Far is slow
       </p>
     </div>

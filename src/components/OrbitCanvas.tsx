@@ -1,9 +1,9 @@
 import React, { forwardRef, useEffect, useImperativeHandle, useRef } from 'react';
 import { EngineCallbacks, OrbitEngine } from '../game/engine';
-import { GameScreen } from '../types';
+import { GameScreen, LevelLoadout } from '../types';
 
 export interface OrbitCanvasHandle {
-  loadLevel: (levelId: number, screen: GameScreen) => void;
+  loadLevel: (levelId: number, screen: GameScreen, loadout?: LevelLoadout) => void;
   setScreen: (screen: GameScreen) => void;
   shiftOrbit: () => void;
   setLowPower: (enabled: boolean) => void;
@@ -28,8 +28,8 @@ const OrbitCanvasInner = forwardRef<OrbitCanvasHandle, OrbitCanvasProps>(
     useImperativeHandle(
       ref,
       () => ({
-        loadLevel(levelId, screen) {
-          engineRef.current?.loadLevel(levelId, screen);
+        loadLevel(levelId, screen, loadout) {
+          engineRef.current?.loadLevel(levelId, screen, loadout);
         },
         setScreen(screen) {
           engineRef.current?.setScreen(screen);
@@ -50,7 +50,7 @@ const OrbitCanvasInner = forwardRef<OrbitCanvasHandle, OrbitCanvasProps>(
 
       const engine = new OrbitEngine(canvas, {
         onHudChange: (snap) => callbacksRef.current.onHudChange(snap),
-        onGameOver: () => callbacksRef.current.onGameOver(),
+        onGameOver: (reason, stats) => callbacksRef.current.onGameOver(reason, stats),
         onVictory: (res) => callbacksRef.current.onVictory(res),
       });
       engine.setLowPower(lowPower);

@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
 import { X, Check, Lock } from 'lucide-react';
-import { CHAPTERS, LEVELS } from '../game/levels';
+import { CHAPTERS, LEVELS, TOTAL_LEVELS, TOTAL_SECTORS } from '../game/levels';
 import { getChapterClearedCount, isChapterUnlocked } from '../game/storage';
 import { LevelRecord } from '../types';
 
 interface LevelSelectModalProps {
   currentLevelId: number;
+  initialChapterId?: number;
   records: Record<number, LevelRecord>;
   onSelectLevel: (levelId: number) => void;
   onClose: () => void;
@@ -13,12 +14,15 @@ interface LevelSelectModalProps {
 
 export const LevelSelectModal: React.FC<LevelSelectModalProps> = ({
   currentLevelId,
+  initialChapterId,
   records,
   onSelectLevel,
   onClose,
 }) => {
-  const initialChapter = Math.max(1, Math.min(5, Math.ceil(currentLevelId / 10)));
-  const [activeChapterId, setActiveChapterId] = useState<number>(initialChapter);
+  const defaultChapter = initialChapterId
+    ? Math.max(1, Math.min(TOTAL_SECTORS, initialChapterId))
+    : Math.max(1, Math.min(TOTAL_SECTORS, Math.ceil(currentLevelId / 10)));
+  const [activeChapterId, setActiveChapterId] = useState<number>(defaultChapter);
 
   const chapter = CHAPTERS[activeChapterId - 1];
   const chapterLevels = LEVELS.filter((l) => l.chapter === activeChapterId);
@@ -34,21 +38,21 @@ export const LevelSelectModal: React.FC<LevelSelectModalProps> = ({
       role="dialog"
       aria-modal="true"
       aria-label="Select Sector"
-      className="fixed inset-0 z-40 bg-[#040712]/88 flex items-center justify-center p-4 sm:p-6"
+      className="fixed inset-0 z-40 bg-[#14182B]/72 flex items-center justify-center p-4 sm:p-6"
       onClick={onClose}
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        className="animate-modal-enter w-full max-w-lg rounded-2xl bg-[#0B1224] border border-slate-700/60 p-4 sm:p-6 flex flex-col max-h-[90dvh] overflow-hidden"
+        className="animate-modal-enter paper-cream-surface paper-cutout-shadow w-full max-w-lg rounded-3xl border-[3px] border-[#27324F] p-4 sm:p-6 flex flex-col max-h-[90dvh] overflow-hidden"
       >
         {/* Header */}
-        <div className="shrink-0 flex items-start justify-between gap-4 pb-3 border-b border-slate-800">
+        <div className="shrink-0 flex items-start justify-between gap-4 pb-3 border-b-2 border-dashed border-[#D3C4AA]">
           <div>
-            <h2 className="font-display text-lg sm:text-xl font-semibold text-white tracking-tight">
+            <h2 className="font-display text-xl sm:text-2xl font-bold text-[#27324F] tracking-tight">
               Sector Atlas
             </h2>
-            <p className="text-xs text-slate-400 mt-0.5 font-mono-num">
-              {totalCompleted} of 50 sectors cleared
+            <p className="text-xs font-bold text-[#6A5E4E] mt-0.5 font-mono-num">
+              {totalCompleted} of {TOTAL_LEVELS} levels cleared · Complete a sector for +50 Rockets
             </p>
           </div>
 
@@ -56,17 +60,17 @@ export const LevelSelectModal: React.FC<LevelSelectModalProps> = ({
             type="button"
             onClick={onClose}
             aria-label="Close sector atlas"
-            className="w-10 h-10 rounded-xl bg-slate-800/80 hover:bg-slate-700/80 text-slate-300 hover:text-white flex items-center justify-center transition-colors shrink-0 focus-visible:outline-2 focus-visible:outline-sky-400"
+            className="paper-btn-cream w-10 h-10 rounded-full flex items-center justify-center transition-transform shrink-0 focus-visible:outline-2 focus-visible:outline-[#27324F]"
           >
-            <X className="w-4 h-4" />
+            <X className="w-5 h-5 text-[#27324F]" />
           </button>
         </div>
 
-        {/* 5 Chapter Segmented Tabs (All always visible & inspectable) */}
+        {/* 6 Sector Segmented Tabs (All always visible & inspectable) */}
         <div
           role="tablist"
-          aria-label="Orbital Chapters"
-          className="shrink-0 grid grid-cols-5 gap-1.5 mt-3.5 p-1 rounded-xl bg-[#060A16] border border-slate-800/80"
+          aria-label="Orbital Sectors"
+          className="shrink-0 grid grid-cols-6 gap-1 mt-3.5 p-1.5 rounded-2xl bg-[#E7DCC7] border border-[#D4C5AA]"
         >
           {CHAPTERS.map((ch) => {
             const isActive = ch.id === activeChapterId;
@@ -78,42 +82,44 @@ export const LevelSelectModal: React.FC<LevelSelectModalProps> = ({
                 type="button"
                 aria-selected={isActive}
                 onClick={() => setActiveChapterId(ch.id)}
-                className={`h-9 sm:h-10 rounded-lg text-xs font-display font-semibold transition-colors whitespace-nowrap flex items-center justify-center gap-1 focus-visible:outline-2 focus-visible:outline-sky-400 ${
+                className={`h-9 sm:h-10 rounded-xl text-[11px] sm:text-xs font-display font-bold transition-all whitespace-nowrap flex items-center justify-center gap-0.5 focus-visible:outline-2 focus-visible:outline-[#27324F] ${
                   isActive
-                    ? 'bg-slate-800 text-white'
+                    ? 'bg-[#4D78A8] text-[#FAF3E6] shadow-[0_2px_0_#34567D]'
                     : unlocked
-                      ? 'text-slate-400 hover:text-slate-200'
-                      : 'text-slate-500 hover:text-slate-300'
+                      ? 'text-[#3F485E] hover:bg-[#F5EFE2]/70'
+                      : 'text-[#847866] hover:bg-[#F5EFE2]/45'
                 }`}
               >
-                {!unlocked && <Lock className="w-3 h-3 shrink-0 opacity-75" aria-hidden="true" />}
-                <span>Ch. {ch.roman}</span>
+                {!unlocked && <Lock className="w-2.5 h-2.5 shrink-0 opacity-80" aria-hidden="true" />}
+                <span>S.{ch.roman}</span>
               </button>
             );
           })}
         </div>
 
-        {/* Active Chapter Heading & Unlock Status */}
+        {/* Active Sector Heading & Unlock Status */}
         <div className="shrink-0 flex items-baseline justify-between gap-3 mt-3.5 mb-2.5">
           <div className="min-w-0">
-            <h3 className="font-display text-sm font-semibold text-slate-100">
-              Chapter {chapter.roman}: {chapter.title}
+            <h3 className="font-display text-sm sm:text-base font-bold text-[#27324F]">
+              Sector {chapter.id}: {chapter.title}
             </h3>
             {chapterUnlocked ? (
-              <p className="text-xs text-slate-400 mt-0.5">{chapter.subtitle}</p>
+              <p className="text-xs font-semibold text-[#6A5E4E] mt-0.5">
+                {chapter.id >= 3 ? `${chapter.subtitle} · Timed` : chapter.subtitle}
+              </p>
             ) : (
-              <p className="text-xs text-amber-300/90 mt-0.5 font-mono-num">
-                Locked · Clear all 10 sectors in Chapter {prevChapter?.roman} ({prevChapterCleared}/10)
+              <p className="text-xs font-bold text-[#C75C3B] mt-0.5 font-mono-num">
+                Locked · Clear all 10 levels in Sector {prevChapter?.id} ({prevChapterCleared}/10)
               </p>
             )}
           </div>
-          <span className="text-xs font-mono-num text-slate-400 shrink-0">
+          <span className="text-xs font-mono-num font-bold text-[#6A5E4E] shrink-0">
             {String(chapter.range[0]).padStart(2, '0')}–{String(chapter.range[1]).padStart(2, '0')}
           </span>
         </div>
 
-        {/* 10-Level Grid: number + small completion stars above title, locked chapters show lock icon */}
-        <div className="min-h-0 flex-1 grid grid-cols-2 gap-2 overflow-y-auto py-0.5">
+        {/* 10-Level Grid: ONLY number + small completion stars beside number & above title + title (no subtitles) */}
+        <div className="min-h-0 flex-1 grid grid-cols-2 gap-2.5 overflow-y-auto py-1 pr-0.5">
           {chapterLevels.map((lvl) => {
             const rec = records[lvl.id];
             const isSelected = lvl.id === currentLevelId && chapterUnlocked;
@@ -130,21 +136,27 @@ export const LevelSelectModal: React.FC<LevelSelectModalProps> = ({
                     onSelectLevel(lvl.id);
                   }
                 }}
-                className={`min-h-[54px] px-3 py-2.5 rounded-xl border text-left flex flex-col justify-center overflow-hidden transition-colors focus-visible:outline-2 focus-visible:outline-sky-400 ${
+                className={`min-h-[56px] px-3 py-2.5 rounded-2xl border-2 text-left flex flex-col justify-center overflow-hidden transition-all focus-visible:outline-2 focus-visible:outline-[#27324F] ${
                   !chapterUnlocked
-                    ? 'bg-[#070C19] border-slate-800/70 opacity-60 cursor-not-allowed'
+                    ? 'bg-[#E5DBC7] border-[#CFC2AA] opacity-75 cursor-not-allowed'
                     : isSelected
-                      ? 'bg-sky-500/15 border-sky-400/70 active:scale-[0.98]'
+                      ? 'bg-[#F3C24F] border-[#27324F] shadow-[0_3px_0_#C29229] active:translate-y-0.5'
                       : rec?.completed
-                        ? 'bg-slate-900/80 border-slate-700/60 hover:border-slate-500/70 active:scale-[0.98]'
-                        : 'bg-[#080E1D] border-slate-800/90 hover:border-slate-700 active:scale-[0.98]'
+                        ? 'bg-[#4D78A8] border-[#34567D] shadow-[0_3px_0_#34567D] hover:bg-[#5884B5] active:translate-y-0.5'
+                        : 'bg-[#FCF8EE] border-dashed border-[#BFAEA0] hover:border-[#4D78A8] shadow-[0_2px_0_#D8CBB4] active:translate-y-0.5'
                 }`}
               >
                 <div className="flex items-center justify-between gap-1.5 w-full min-w-0">
                   <div className="flex items-center gap-1.5 min-w-0">
                     <span
-                      className={`font-mono-num text-xs font-semibold shrink-0 ${
-                        chapterUnlocked ? 'text-sky-300' : 'text-slate-500'
+                      className={`font-mono-num text-xs font-bold shrink-0 ${
+                        !chapterUnlocked
+                          ? 'text-[#847866]'
+                          : isSelected
+                            ? 'text-[#27324F]'
+                            : rec?.completed
+                              ? 'text-[#FAF3E6]'
+                              : 'text-[#C75C3B]'
                       }`}
                     >
                       {String(lvl.id).padStart(2, '0')}
@@ -160,7 +172,13 @@ export const LevelSelectModal: React.FC<LevelSelectModalProps> = ({
                             key={slot}
                             viewBox="0 0 20 20"
                             className={`w-2.5 h-2.5 shrink-0 ${
-                              slot <= earnedStars ? 'text-amber-300' : 'text-slate-600/80'
+                              slot <= earnedStars
+                                ? isSelected
+                                  ? 'text-[#27324F]'
+                                  : 'text-[#F3C24F]'
+                                : isSelected
+                                  ? 'text-[#B58924]/50'
+                                  : 'text-[#2B496B]/70'
                             }`}
                           >
                             <path
@@ -174,15 +192,26 @@ export const LevelSelectModal: React.FC<LevelSelectModalProps> = ({
                   </div>
 
                   {!chapterUnlocked ? (
-                    <Lock className="w-3.5 h-3.5 text-slate-500 shrink-0" aria-label="Locked" />
+                    <Lock className="w-3.5 h-3.5 text-[#847866] shrink-0" aria-label="Locked" />
                   ) : rec?.completed ? (
-                    <Check className="w-3.5 h-3.5 text-emerald-300 shrink-0" aria-label="Cleared" />
+                    <Check
+                      className={`w-3.5 h-3.5 shrink-0 ${
+                        isSelected ? 'text-[#27324F]' : 'text-[#C8E8C8]'
+                      }`}
+                      aria-label="Cleared"
+                    />
                   ) : null}
                 </div>
 
                 <div
-                  className={`font-display text-sm font-medium truncate mt-0.5 w-full ${
-                    chapterUnlocked ? 'text-slate-100' : 'text-slate-400'
+                  className={`font-display text-sm font-semibold truncate mt-0.5 w-full ${
+                    !chapterUnlocked
+                      ? 'text-[#786D5D]'
+                      : isSelected
+                        ? 'text-[#27324F]'
+                        : rec?.completed
+                          ? 'text-[#FAF3E6]'
+                          : 'text-[#27324F]'
                   }`}
                 >
                   {lvl.name}

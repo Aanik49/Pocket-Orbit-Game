@@ -1,21 +1,48 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { DailyLoginModal, DailyMissionModal } from './components/DailyModals';
 import { GameHud } from './components/GameHud';
 import { GameOverModal, PauseModal, VictoryModal } from './components/GameModals';
 import { LevelSelectModal } from './components/LevelSelectModal';
+import { LevelStartModal } from './components/LevelStartModal';
+import { LobbyScreen } from './components/LobbyScreen';
 import { OrbitCanvas, OrbitCanvasHandle } from './components/OrbitCanvas';
 import { SplashScreen } from './components/SplashScreen';
-import { TitleOverlay } from './components/TitleOverlay';
+import { EquipmentsModal, SpaceStationModal } from './components/StationAndEquipModals';
 import { spaceAudio } from './game/audio';
-import { calculateCompletionStars, getChapterForLevel, getLevelById } from './game/levels';
+import { calculateCompletionStars, getLevelById } from './game/levels';
 import {
-  getCompletionStats,
+  applyDailyMissionProgress,
+  buySatellite,
+  buyShields,
+  canClaimDailyLogin,
+  claimDailyLoginReward,
+  claimDailyMissionReward,
+  consumeOneShield,
+  equipSatellite,
   getNextUnlockedLevelId,
+  hasClaimableDailyMission,
   isLevelUnlocked,
   loadSaveData,
   persistSaveData,
   recordLevelCompletion,
 } from './game/storage';
-import { GameScreen, HudSnapshot, RunSummary, SaveData } from './types';
+import {
+  GameOverReason,
+  GameScreen,
+  HudSnapshot,
+  RunSummary,
+  SatelliteId,
+  SaveData,
+} from './types';
+
+type LobbyModal =
+  | null
+  | 'sectors'
+  | 'daily_login'
+  | 'daily_mission'
+  | 'space_station'
+  | 'equipments'
+  | 'level_start';
 
 export default function App() {
   const [saveData, setSaveData] = useState<SaveData>(() => {
@@ -28,12 +55,14 @@ export default function App() {
   const [showSplash, setShowSplash] = useState(true);
   const [screen, setScreen] = useState<GameScreen>('TITLE');
   const [activeLevelId, setActiveLevelId] = useState<number>(() => saveData.currentLevelId);
-  const [showLevelSelect, setShowLevelSelect] = useState(false);
+  const [pendingStartLevelId, setPendingStartLevelId] = useState<number>(() => saveData.currentLevelId);
+  const [atlasInitialChapter, setAtlasInitialChapter] = useState<number | undefined>(undefined);
+  const [activeModal, setActiveModal] = useState<LobbyModal>(null);
+  const [gameOverReason, setGameOverReason] = useState<GameOverReason>('collision');
   const [runSummary, setRunSummary] = useState<RunSummary | null>(null);
 
   const activeLevel = useMemo(() => getLevelById(activeLevelId), [activeLevelId]);
-  const activeChapter = useMemo(() => getChapterForLevel(activeLevelId), [activeLevelId]);
-  const stats = useMemo(() => getCompletionStats(saveData), [saveData]);
+  const pendingStartLevel = useMemo(() => getLevelById(pendingStartLevelId), [pendingStartLevelId]);
 
   const [hud, setHud] = useState<HudSnapshot>(() => ({
     levelId: activeLevel.id,
@@ -45,14 +74,19 @@ export default function App() {
     inGravityWell: false,
     gravityMode: 'none',
     shiftCount: 0,
+    timeLimit: activeLevel.timeLimit,
+    timeRemaining: activeLevel.timeLimit,
+    timerDisabled: false,
+    shieldActive: false,
+    satelliteId: saveData.selectedSatellite,
   }));
 
   const canvasRef = useRef<OrbitCanvasHandle | null>(null);
   const screenRef = useRef<GameScreen>(screen);
   screenRef.current = screen;
 
-  const showLevelSelectRef = useRef<boolean>(showLevelSelect);
-  showLevelSelectRef.current = showLevelSelect;
+  const activeModalRef = useRef<LobbyModal>(activeModal);
+  activeModalRef.current = activeModal;
 
   const showSplashRef = useRef<boolean>(showSplash);
   showSplashRef.current = showSplash;
@@ -63,10 +97,9 @@ export default function App() {
   const saveDataRef = useRef<SaveData>(saveData);
   saveDataRef.current = saveData;
 
-  // Sync initial preview level into the canvas once mounted
   useEffect(() => {
     canvasRef.current?.loadLevel(activeLevelId, 'TITLE');
-    // Only on mount
+    // Mount only
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -96,33 +129,61 @@ export default function App() {
     };
   }, []);
 
-  const launchLevel = useCallback((levelId: number) => {
+  /** Opens the pre-launch Loadout panel (satellite selector + shield toggle) before starting a level */
+  const openLevelStartPanel = useCallback((levelId: number) => {
     if (!isLevelUnlocked(levelId, saveDataRef.current.records)) return;
     spaceAudio.unlock();
-    spaceAudio.playShift(true);
-    setShowLevelSelect(false);
-    setRunSummary(null);
-    setActiveLevelId(levelId);
-    setScreen('PLAYING');
-    canvasRef.current?.loadLevel(levelId, 'PLAYING');
+    setPendingStartLevelId(levelId);
+    setActiveModal('level_start');
   }, []);
 
-  const handleStartFromTitle = useCallback(() => {
-    launchLevel(activeLevelIdRef.current);
-  }, [launchLevel]);
+  /** Launches gameplay immediately with chosen satellite and optional 1-shield consumption */
+  const launchLevelWithLoadout = useCallback(
+    (levelId: number, useShield: boolean) => {
+      const currentSave = saveDataRef.current;
+      if (!isLevelUnlocked(levelId, currentSave.records)) return;
 
-  const handleRetry = useCallback(() => {
-    launchLevel(activeLevelIdRef.current);
-  }, [launchLevel]);
+      let shieldArmed = false;
+      if (useShield && currentSave.shields > 0) {
+        shieldArmed = true;
+        const nextSave = consumeOneShield(currentSave);
+        setSaveData(nextSave);
+      }
+
+      const satelliteId = currentSave.selectedSatellite;
+      spaceAudio.unlock();
+      spaceAudio.playShift(true);
+
+      setActiveModal(null);
+      setRunSummary(null);
+      setGameOverReason('collision');
+      setActiveLevelId(levelId);
+      setScreen('PLAYING');
+      canvasRef.current?.loadLevel(levelId, 'PLAYING', {
+        satelliteId,
+        shieldActive: shieldArmed,
+      });
+    },
+    []
+  );
+
+  const handlePlayFromLobby = useCallback(() => {
+    openLevelStartPanel(saveDataRef.current.currentLevelId);
+  }, [openLevelStartPanel]);
+
+  const handleRetryImmediate = useCallback(() => {
+    launchLevelWithLoadout(activeLevelIdRef.current, false);
+  }, [launchLevelWithLoadout]);
 
   const handleNextLevel = useCallback(() => {
     const nextId = getNextUnlockedLevelId(activeLevelIdRef.current, saveDataRef.current.records);
     if (nextId !== null) {
-      launchLevel(nextId);
+      openLevelStartPanel(nextId);
     } else {
-      setShowLevelSelect(true);
+      setAtlasInitialChapter(undefined);
+      setActiveModal('sectors');
     }
-  }, [launchLevel]);
+  }, [openLevelStartPanel]);
 
   const handlePause = useCallback(() => {
     if (screenRef.current !== 'PLAYING') return;
@@ -137,10 +198,10 @@ export default function App() {
   }, []);
 
   const handleReturnTitle = useCallback(() => {
-    setShowLevelSelect(false);
+    setActiveModal(null);
     setRunSummary(null);
     setScreen('TITLE');
-    canvasRef.current?.loadLevel(activeLevelIdRef.current, 'TITLE');
+    canvasRef.current?.loadLevel(saveDataRef.current.currentLevelId, 'TITLE');
   }, []);
 
   const handleToggleMute = useCallback(() => {
@@ -179,16 +240,29 @@ export default function App() {
   }, []);
 
   const handlePointerTap = useCallback(() => {
-    if (showSplashRef.current || showLevelSelectRef.current) return;
+    if (showSplashRef.current || activeModalRef.current !== null) return;
     if (screenRef.current === 'PLAYING') {
       spaceAudio.unlock();
       canvasRef.current?.shiftOrbit();
     }
   }, []);
 
-  const handleGameOver = useCallback(() => {
-    setScreen('GAMEOVER');
-  }, []);
+  const handleGameOver = useCallback(
+    (reason: GameOverReason, runStats: { orbitalStars: number; shifts: number }) => {
+      setGameOverReason(reason);
+      // Credit partial orbital stars & shifts toward today's Daily Missions even on a failed attempt
+      if (runStats.orbitalStars > 0 || runStats.shifts > 0) {
+        setSaveData((prev) =>
+          applyDailyMissionProgress(prev, {
+            orbital_stars: runStats.orbitalStars,
+            shifts: runStats.shifts,
+          })
+        );
+      }
+      setScreen('GAMEOVER');
+    },
+    []
+  );
 
   const handleVictory = useCallback(
     (result: {
@@ -196,15 +270,24 @@ export default function App() {
       flightTime: number;
       shiftCount: number;
       starsEarned: number;
+      orbitalStars: number;
     }) => {
       const lvl = getLevelById(result.levelId);
       const earnedRating = calculateCompletionStars(result.shiftCount, lvl.parShifts);
-      const { next, isNewBestTime, isNewBestShifts } = recordLevelCompletion(
+      const {
+        next,
+        isNewBestTime,
+        isNewBestShifts,
+        starsAddedToLobby,
+        sectorBonusRockets,
+        completedSectorTitle,
+      } = recordLevelCompletion(
         saveDataRef.current,
         result.levelId,
         result.flightTime,
         result.shiftCount,
-        earnedRating
+        earnedRating,
+        result.orbitalStars
       );
       setSaveData(next);
       setRunSummary({
@@ -213,6 +296,9 @@ export default function App() {
         shiftCount: result.shiftCount,
         parShifts: lvl.parShifts,
         starsEarned: earnedRating,
+        starsAddedToLobby,
+        sectorBonusRockets,
+        completedSectorTitle,
         isNewBestTime,
         isNewBestShifts,
       });
@@ -221,7 +307,38 @@ export default function App() {
     []
   );
 
-  // Edge-triggered keyboard controls + window blur safety
+  // Economy & Daily callbacks
+  const handleClaimDailyLogin = useCallback(() => {
+    spaceAudio.unlock();
+    spaceAudio.playStar(2);
+    setSaveData((prev) => claimDailyLoginReward(prev));
+  }, []);
+
+  const handleClaimDailyMission = useCallback((missionId: string) => {
+    spaceAudio.unlock();
+    spaceAudio.playStar(3);
+    setSaveData((prev) => claimDailyMissionReward(prev, missionId));
+  }, []);
+
+  const handleBuySatellite = useCallback((id: SatelliteId) => {
+    spaceAudio.unlock();
+    spaceAudio.playPortalOpen();
+    setSaveData((prev) => buySatellite(prev, id));
+  }, []);
+
+  const handleEquipSatellite = useCallback((id: SatelliteId) => {
+    spaceAudio.unlock();
+    spaceAudio.playShift(true);
+    setSaveData((prev) => equipSatellite(prev, id));
+  }, []);
+
+  const handleBuyShields = useCallback((qty: number) => {
+    spaceAudio.unlock();
+    spaceAudio.playStar(1);
+    setSaveData((prev) => buyShields(prev, qty));
+  }, []);
+
+  // Keyboard shortcuts + window blur safety
   useEffect(() => {
     const heldKeys = new Set<string>();
 
@@ -235,8 +352,8 @@ export default function App() {
       }
 
       if (e.code === 'Escape') {
-        if (showLevelSelectRef.current) {
-          setShowLevelSelect(false);
+        if (activeModalRef.current !== null) {
+          setActiveModal(null);
           return;
         }
         if (screenRef.current === 'PLAYING') {
@@ -247,11 +364,11 @@ export default function App() {
         return;
       }
 
-      if (showLevelSelectRef.current) return;
+      if (activeModalRef.current !== null) return;
 
       if (e.code === 'KeyR' && (screenRef.current === 'PLAYING' || screenRef.current === 'GAMEOVER')) {
         e.preventDefault();
-        handleRetry();
+        handleRetryImmediate();
         return;
       }
 
@@ -261,9 +378,9 @@ export default function App() {
           spaceAudio.unlock();
           canvasRef.current?.shiftOrbit();
         } else if (screenRef.current === 'TITLE') {
-          handleStartFromTitle();
+          handlePlayFromLobby();
         } else if (screenRef.current === 'GAMEOVER') {
-          handleRetry();
+          handleRetryImmediate();
         } else if (screenRef.current === 'VICTORY') {
           handleNextLevel();
         }
@@ -289,14 +406,17 @@ export default function App() {
       window.removeEventListener('keyup', onKeyUp);
       window.removeEventListener('blur', onBlur);
     };
-  }, [handleNextLevel, handlePause, handleResume, handleRetry, handleStartFromTitle]);
+  }, [handleNextLevel, handlePause, handlePlayFromLobby, handleResume, handleRetryImmediate]);
 
   const handleSplashDone = useCallback(() => {
     setShowSplash(false);
   }, []);
 
+  const dailyLoginClaimable = canClaimDailyLogin(saveData.dailyLogin);
+  const dailyMissionClaimable = hasClaimableDailyMission(saveData.dailyMissions);
+
   return (
-    <main className="relative w-screen h-[100dvh] overflow-hidden bg-[#050814] select-none">
+    <main className="relative w-screen h-[100dvh] overflow-hidden bg-[#1E243B] select-none">
       {/* Animated Launch Splash Screen */}
       {showSplash && <SplashScreen onFinish={handleSplashDone} />}
 
@@ -310,23 +430,32 @@ export default function App() {
         onPointerTap={handlePointerTap}
       />
 
-      {/* Title Screen Shell */}
+      {/* Plush Space Lobby Screen */}
       {screen === 'TITLE' && (
-        <TitleOverlay
-          currentLevel={activeLevel}
-          currentChapter={activeChapter}
-          completedCount={stats.completedCount}
-          totalStars={stats.totalStars}
+        <LobbyScreen
+          lobbyStars={saveData.stars}
+          lobbyRockets={saveData.rockets}
+          currentLevelId={saveData.currentLevelId}
+          records={saveData.records}
           muted={saveData.muted}
           musicMuted={saveData.musicMuted}
-          onStart={handleStartFromTitle}
-          onOpenLevels={() => setShowLevelSelect(true)}
+          dailyLoginClaimable={dailyLoginClaimable}
+          dailyMissionClaimable={dailyMissionClaimable}
+          onPlayCurrent={handlePlayFromLobby}
+          onOpenSectorAtlas={(chapterId) => {
+            setAtlasInitialChapter(chapterId);
+            setActiveModal('sectors');
+          }}
+          onOpenDailyLogin={() => setActiveModal('daily_login')}
+          onOpenDailyMission={() => setActiveModal('daily_mission')}
+          onOpenEquipments={() => setActiveModal('equipments')}
+          onOpenSpaceStation={() => setActiveModal('space_station')}
           onToggleMute={handleToggleMute}
           onToggleMusic={handleToggleMusic}
         />
       )}
 
-      {/* Active Gameplay Minimalist HUD */}
+      {/* Active Gameplay Paper-Craft HUD */}
       {screen !== 'TITLE' && (
         <GameHud
           level={activeLevel}
@@ -340,48 +469,120 @@ export default function App() {
       )}
 
       {/* Pause Modal */}
-      {screen === 'PAUSED' && !showLevelSelect && (
+      {screen === 'PAUSED' && activeModal === null && (
         <PauseModal
           level={activeLevel}
           lowPower={saveData.lowPower}
           onToggleLowPower={handleToggleLowPower}
           onResume={handleResume}
-          onRestart={handleRetry}
-          onOpenLevels={() => setShowLevelSelect(true)}
+          onRestart={() => openLevelStartPanel(activeLevel.id)}
+          onOpenLevels={() => {
+            setAtlasInitialChapter(activeLevel.chapter);
+            setActiveModal('sectors');
+          }}
           onReturnTitle={handleReturnTitle}
         />
       )}
 
-      {/* Collision / Retry Modal */}
-      {screen === 'GAMEOVER' && !showLevelSelect && (
+      {/* Collision / Timeout Modal */}
+      {screen === 'GAMEOVER' && activeModal === null && (
         <GameOverModal
           level={activeLevel}
-          onRetry={handleRetry}
-          onOpenLevels={() => setShowLevelSelect(true)}
+          reason={gameOverReason}
+          onRetry={handleRetryImmediate}
+          onOpenLoadout={() => openLevelStartPanel(activeLevel.id)}
+          onOpenLevels={() => {
+            setAtlasInitialChapter(activeLevel.chapter);
+            setActiveModal('sectors');
+          }}
           onReturnTitle={handleReturnTitle}
         />
       )}
 
       {/* Victory Summary Modal */}
-      {screen === 'VICTORY' && runSummary && !showLevelSelect && (
+      {screen === 'VICTORY' && runSummary && activeModal === null && (
         <VictoryModal
           level={activeLevel}
           summary={runSummary}
           nextLevelId={getNextUnlockedLevelId(activeLevel.id, saveData.records)}
-          onReplay={handleRetry}
+          onReplay={() => openLevelStartPanel(activeLevel.id)}
           onNext={handleNextLevel}
-          onOpenLevels={() => setShowLevelSelect(true)}
+          onOpenLevels={() => {
+            setAtlasInitialChapter(activeLevel.chapter);
+            setActiveModal('sectors');
+          }}
           onReturnTitle={handleReturnTitle}
         />
       )}
 
-      {/* 50-Level Sector Atlas */}
-      {showLevelSelect && (
+      {/* 6-Sector / 60-Level Atlas */}
+      {activeModal === 'sectors' && (
         <LevelSelectModal
-          currentLevelId={activeLevelId}
+          currentLevelId={saveData.currentLevelId}
+          initialChapterId={atlasInitialChapter}
           records={saveData.records}
-          onSelectLevel={(id) => launchLevel(id)}
-          onClose={() => setShowLevelSelect(false)}
+          onSelectLevel={(id) => openLevelStartPanel(id)}
+          onClose={() => setActiveModal(null)}
+        />
+      )}
+
+      {/* Pre-Launch Loadout Panel (Satellite Selection + Shield Toggle) */}
+      {activeModal === 'level_start' && (
+        <LevelStartModal
+          level={pendingStartLevel}
+          ownedSatellites={saveData.ownedSatellites}
+          selectedSatellite={saveData.selectedSatellite}
+          shieldsOwned={saveData.shields}
+          onSelectSatellite={handleEquipSatellite}
+          onLaunch={(useShield) => launchLevelWithLoadout(pendingStartLevel.id, useShield)}
+          onOpenSpaceStation={() => setActiveModal('space_station')}
+          onClose={() => setActiveModal(null)}
+        />
+      )}
+
+      {/* Daily Login 7-Day Rewards Modal */}
+      {activeModal === 'daily_login' && (
+        <DailyLoginModal
+          loginState={saveData.dailyLogin}
+          onClaim={handleClaimDailyLogin}
+          onClose={() => setActiveModal(null)}
+        />
+      )}
+
+      {/* Daily Missions Modal */}
+      {activeModal === 'daily_mission' && (
+        <DailyMissionModal
+          missionState={saveData.dailyMissions}
+          onClaimMission={handleClaimDailyMission}
+          onClose={() => setActiveModal(null)}
+        />
+      )}
+
+      {/* Space Station Shop Modal (4 Satellites + Shields) */}
+      {activeModal === 'space_station' && (
+        <SpaceStationModal
+          lobbyStars={saveData.stars}
+          lobbyRockets={saveData.rockets}
+          shieldsOwned={saveData.shields}
+          ownedSatellites={saveData.ownedSatellites}
+          selectedSatellite={saveData.selectedSatellite}
+          records={saveData.records}
+          onBuySatellite={handleBuySatellite}
+          onEquipSatellite={handleEquipSatellite}
+          onBuyShields={handleBuyShields}
+          onClose={() => setActiveModal(null)}
+        />
+      )}
+
+      {/* Equipments Hangar Modal (Owned Satellites & Shields) */}
+      {activeModal === 'equipments' && (
+        <EquipmentsModal
+          ownedSatellites={saveData.ownedSatellites}
+          selectedSatellite={saveData.selectedSatellite}
+          shieldsOwned={saveData.shields}
+          onEquipSatellite={handleEquipSatellite}
+          onOpenSpaceStation={() => setActiveModal('space_station')}
+          onClose={() => setActiveModal(null)}
         />
       )}
     </main>

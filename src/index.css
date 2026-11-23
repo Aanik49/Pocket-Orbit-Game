@@ -2,9 +2,16 @@
 
 @layer base {
   :root {
-    --font-display: 'Outfit', system-ui, -apple-system, sans-serif;
-    --font-ui: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
-    --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, monospace;
+    --font-display: 'Fredoka', system-ui, -apple-system, sans-serif;
+    --font-ui: 'Nunito', system-ui, -apple-system, sans-serif;
+    --paper-cream: #f5efe2;
+    --paper-cream-deep: #ebe2cf;
+    --paper-navy: #1e243b;
+    --paper-ink: #27324f;
+    --paper-terracotta: #c75c3b;
+    --paper-gold: #f3c24f;
+    --paper-denim: #4d78a8;
+    --paper-sage: #7bb38a;
   }
 
   html,
@@ -16,7 +23,7 @@
     margin: 0;
     padding: 0;
     overflow: hidden;
-    background-color: #060a16;
+    background-color: #1e243b;
     font-family: var(--font-ui);
     -webkit-tap-highlight-color: transparent;
     -webkit-touch-callout: none;
@@ -29,14 +36,138 @@
 }
 
 .font-mono-num {
-  font-family: var(--font-mono);
+  font-family: var(--font-display);
   font-variant-numeric: tabular-nums;
+}
+
+/* Tactile speckled cream handmade paper surface (Home, Splash, Modals, HUD tags) */
+.paper-cream-surface {
+  background-color: #f5efe2;
+  background-image:
+    radial-gradient(rgba(165, 138, 102, 0.24) 1px, transparent 1px),
+    radial-gradient(rgba(130, 104, 72, 0.16) 1px, transparent 1px),
+    radial-gradient(rgba(196, 166, 128, 0.2) 1.2px, transparent 1.2px);
+  background-size: 38px 38px, 61px 61px, 87px 87px;
+  background-position: 0 0, 17px 23px, 41px 11px;
+}
+
+/* Crisp physical paper cutout drop shadows */
+.paper-cutout-shadow {
+  box-shadow:
+    0 5px 0 rgba(20, 26, 46, 0.22),
+    0 10px 20px rgba(12, 16, 32, 0.22);
+}
+
+.paper-tag-shadow {
+  box-shadow:
+    0 4px 0 rgba(11, 15, 29, 0.42),
+    0 8px 16px rgba(8, 11, 24, 0.35);
+}
+
+/* Terracotta stitched primary PLAY / action patch */
+.paper-btn-terracotta {
+  background-color: #c75c3b;
+  color: #fbf5e9;
+  box-shadow:
+    0 5px 0 #8d3c23,
+    0 10px 18px rgba(39, 50, 79, 0.22);
+}
+
+.paper-btn-terracotta:hover {
+  background-color: #d16645;
+}
+
+.paper-btn-terracotta:active {
+  transform: translateY(2px);
+  box-shadow:
+    0 2px 0 #8d3c23,
+    0 5px 10px rgba(39, 50, 79, 0.2);
+}
+
+/* Slate-denim stitched secondary button */
+.paper-btn-denim {
+  background-color: #4d78a8;
+  color: #fbf5e9;
+  box-shadow:
+    0 4px 0 #34567d,
+    0 8px 14px rgba(39, 50, 79, 0.2);
+}
+
+.paper-btn-denim:hover {
+  background-color: #5884b5;
+}
+
+.paper-btn-denim:active {
+  transform: translateY(2px);
+  box-shadow:
+    0 2px 0 #34567d,
+    0 4px 8px rgba(39, 50, 79, 0.18);
+}
+
+/* Sunny ochre stitched button */
+.paper-btn-gold {
+  background-color: #f3c24f;
+  color: #27324f;
+  box-shadow:
+    0 4px 0 #c29229,
+    0 8px 14px rgba(39, 50, 79, 0.18);
+}
+
+.paper-btn-gold:hover {
+  background-color: #f6cc67;
+}
+
+.paper-btn-gold:active {
+  transform: translateY(2px);
+  box-shadow:
+    0 2px 0 #c29229,
+    0 4px 8px rgba(39, 50, 79, 0.16);
+}
+
+/* Soft sage green stitched victory CTA */
+.paper-btn-sage {
+  background-color: #5f9e73;
+  color: #fbf5e9;
+  box-shadow:
+    0 5px 0 #407351,
+    0 10px 18px rgba(20, 32, 26, 0.24);
+}
+
+.paper-btn-sage:hover {
+  background-color: #6bab7f;
+}
+
+.paper-btn-sage:active {
+  transform: translateY(2px);
+  box-shadow:
+    0 2px 0 #407351,
+    0 5px 10px rgba(20, 32, 26, 0.2);
+}
+
+/* Warm parchment secondary card button */
+.paper-btn-cream {
+  background-color: #ebe1ce;
+  color: #27324f;
+  box-shadow:
+    0 4px 0 #cbbda4,
+    0 6px 12px rgba(39, 50, 79, 0.12);
+}
+
+.paper-btn-cream:hover {
+  background-color: #e4d8c1;
+}
+
+.paper-btn-cream:active {
+  transform: translateY(2px);
+  box-shadow:
+    0 2px 0 #cbbda4,
+    0 3px 6px rgba(39, 50, 79, 0.12);
 }
 
 @keyframes modalEnter {
   from {
     opacity: 0;
-    transform: translateY(10px) scale(0.98);
+    transform: translateY(10px) scale(0.97);
   }
   to {
     opacity: 1;
@@ -65,11 +196,11 @@
     transform: scale(0.75) rotate(0deg);
   }
   35% {
-    opacity: 0.7;
+    opacity: 0.85;
   }
   100% {
-    opacity: 0.28;
-    transform: scale(1.22) rotate(90deg);
+    opacity: 0.45;
+    transform: scale(1.18) rotate(80deg);
   }
 }
 
@@ -81,6 +212,16 @@
   100% {
     opacity: 1;
     transform: translateY(0);
+  }
+}
+
+@keyframes cloudFloat {
+  0%,
+  100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-5px);
   }
 }
 
@@ -106,12 +247,17 @@
   animation: splashTitleIn 520ms cubic-bezier(0.16, 1, 0.3, 1) 460ms forwards;
 }
 
+.animate-cloud-slow {
+  animation: cloudFloat 6s ease-in-out infinite;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .animate-modal-enter,
   .animate-splash-icon,
   .animate-splash-ring,
   .animate-splash-title,
-  .animate-splash-sub {
+  .animate-splash-sub,
+  .animate-cloud-slow {
     animation: none;
     opacity: 1;
   }

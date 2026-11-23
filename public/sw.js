@@ -1,4 +1,4 @@
-const CACHE_NAME = 'pocket-orbit-v1';
+const CACHE_NAME = 'pocket-orbit-v2';
 const PRECACHE_URLS = [
   './',
   './index.html',
