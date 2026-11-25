@@ -33,15 +33,15 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ onFinish }) => {
     <div
       onPointerDown={handleSkip}
       role="presentation"
-      className={`fixed inset-0 z-50 paper-cream-surface flex flex-col items-center justify-center px-6 transition-opacity duration-350 cursor-pointer ${
+      className={`fixed inset-0 z-50 bg-[radial-gradient(circle_at_50%_40%,#1F2F9C_0%,#0E1454_55%,#070A2B_100%)] flex flex-col items-center justify-center px-6 transition-opacity duration-350 cursor-pointer ${
         fadingOut ? 'opacity-0 pointer-events-none' : 'opacity-100'
       }`}
     >
-      {/* Animated Stitched Twine Ring + Framed Paper Game Icon */}
+      {/* Animated Glowing Cyan-Gold Orbital Ring + Launch Rocket Icon */}
       <div className="relative flex items-center justify-center">
         <svg
           viewBox="0 0 180 180"
-          className="animate-splash-ring absolute w-40 h-40 sm:w-44 sm:h-44 pointer-events-none"
+          className="animate-splash-ring absolute w-44 h-44 sm:w-48 sm:h-48 pointer-events-none drop-shadow-[0_0_12px_rgba(56,232,255,0.65)]"
           aria-hidden="true"
         >
           <circle
@@ -49,50 +49,42 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ onFinish }) => {
             cy="90"
             r="78"
             fill="none"
-            stroke="#8B765B"
-            strokeWidth="1.8"
-            strokeDasharray="6 7"
+            stroke="#3DF2FF"
+            strokeWidth="2.2"
+            strokeDasharray="7 7"
           />
-          <circle cx="90" cy="12" r="5" fill="#C75C3B" />
-          <circle cx="90" cy="12" r="2.2" fill="#F5EFE2" />
+          <circle cx="90" cy="12" r="5.5" fill="#FFD426" />
+          <circle cx="90" cy="12" r="2.5" fill="#FFFFFF" />
         </svg>
 
-        <div className="animate-splash-icon relative w-24 h-24 sm:w-28 sm:h-28 rounded-3xl overflow-hidden border-[3px] border-[#27324F] bg-[#1E243B] paper-cutout-shadow flex items-center justify-center">
-          <svg viewBox="0 0 48 48" className="w-16 h-16" aria-hidden="true">
-            <circle cx="24" cy="24" r="18" fill="none" stroke="#E8D5B5" strokeWidth="1.5" strokeDasharray="3 3" />
-            <circle cx="24" cy="24" r="11" fill="none" stroke="#F3C24F" strokeWidth="1.6" strokeDasharray="3 3" />
-            <circle cx="24" cy="24" r="5.5" fill="#F08A7B" />
-            <circle cx="35" cy="24" r="2.8" fill="#FAF3E6" />
-          </svg>
+        <div className="animate-splash-icon relative w-28 h-28 sm:w-32 sm:h-32 rounded-3xl overflow-hidden border-[3px] border-[#3DF2FF] bg-[radial-gradient(circle_at_50%_30%,#2743BA_0%,#0B1248_100%)] shadow-[0_0_28px_rgba(56,232,255,0.45)] flex items-center justify-center p-2">
           <img
-            src="./icon-512.png"
-            alt="Pocket Orbit"
+            src="./assets/cosmic/rocket.png"
+            alt="Pocket Orbit Rocket"
             referrerPolicy="no-referrer"
-            className="absolute inset-0 w-full h-full object-cover"
-            onError={(e) => {
-              e.currentTarget.style.display = 'none';
-            }}
+            draggable={false}
+            className="h-full w-auto object-contain drop-shadow-[0_6px_14px_rgba(255,152,20,0.55)]"
           />
         </div>
       </div>
 
-      {/* Animated Layered Paper-Cut Game Name */}
+      {/* Animated Glossy Cosmic Game Name */}
       <div className="animate-splash-title mt-7 relative flex items-center justify-center">
         {logoFailed ? (
-          <PaperLogo className="w-56 sm:w-64 h-auto" />
+          <PaperLogo className="w-60 sm:w-72 h-auto" />
         ) : (
           <img
-            src="./assets/lobby/logo.png"
+            src="./assets/cosmic/logo.png"
             alt="Pocket Orbit"
             referrerPolicy="no-referrer"
             draggable={false}
-            className="w-56 sm:w-64 h-auto object-contain"
+            className="w-64 sm:w-76 h-auto object-contain drop-shadow-[0_10px_24px_rgba(45,140,255,0.55)]"
             onError={() => setLogoFailed(true)}
           />
         )}
       </div>
 
-      <p className="animate-splash-sub text-xs sm:text-sm font-semibold text-[#5E5447] tracking-wide mt-2">
+      <p className="animate-splash-sub text-xs sm:text-sm font-bold text-[#7CE7FF] tracking-wide mt-2">
         Close is fast · Far is slow
       </p>
     </div>

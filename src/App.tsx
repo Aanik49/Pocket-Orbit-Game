@@ -408,6 +408,34 @@ export default function App() {
     };
   }, [handleNextLevel, handlePause, handlePlayFromLobby, handleResume, handleRetryImmediate]);
 
+  // Preload & decode cosmic lobby assets on startup so Lobby transitions are always instant
+  useEffect(() => {
+    const assets = [
+      './assets/cosmic/lobby-bg.png',
+      './assets/cosmic/logo.png',
+      './assets/cosmic/rocket.png',
+      './assets/cosmic/btn-play.png',
+      './assets/cosmic/btn-music.png',
+      './assets/cosmic/btn-sound.png',
+      './assets/cosmic/pill-star.png',
+      './assets/cosmic/pill-rocket.png',
+      './assets/cosmic/dock-sectors.png',
+      './assets/cosmic/dock-daily-login.png',
+      './assets/cosmic/dock-daily-mission.png',
+      './assets/cosmic/dock-equipments.png',
+      './assets/cosmic/dock-space-station.png',
+      './assets/cosmic/icon-shield.png',
+      './assets/cosmic/icon-radio.png',
+    ];
+    assets.forEach((src) => {
+      const img = new Image();
+      img.src = src;
+      if (typeof img.decode === 'function') {
+        img.decode().catch(() => {});
+      }
+    });
+  }, []);
+
   const handleSplashDone = useCallback(() => {
     setShowSplash(false);
   }, []);
@@ -416,7 +444,7 @@ export default function App() {
   const dailyMissionClaimable = hasClaimableDailyMission(saveData.dailyMissions);
 
   return (
-    <main className="relative w-screen h-[100dvh] overflow-hidden bg-[#1E243B] select-none">
+    <main className="relative w-screen h-[100dvh] overflow-hidden bg-[#080C38] select-none">
       {/* Animated Launch Splash Screen */}
       {showSplash && <SplashScreen onFinish={handleSplashDone} />}
 
@@ -430,32 +458,31 @@ export default function App() {
         onPointerTap={handlePointerTap}
       />
 
-      {/* Plush Space Lobby Screen */}
-      {screen === 'TITLE' && (
-        <LobbyScreen
-          lobbyStars={saveData.stars}
-          lobbyRockets={saveData.rockets}
-          currentLevelId={saveData.currentLevelId}
-          records={saveData.records}
-          muted={saveData.muted}
-          musicMuted={saveData.musicMuted}
-          dailyLoginClaimable={dailyLoginClaimable}
-          dailyMissionClaimable={dailyMissionClaimable}
-          onPlayCurrent={handlePlayFromLobby}
-          onOpenSectorAtlas={(chapterId) => {
-            setAtlasInitialChapter(chapterId);
-            setActiveModal('sectors');
-          }}
-          onOpenDailyLogin={() => setActiveModal('daily_login')}
-          onOpenDailyMission={() => setActiveModal('daily_mission')}
-          onOpenEquipments={() => setActiveModal('equipments')}
-          onOpenSpaceStation={() => setActiveModal('space_station')}
-          onToggleMute={handleToggleMute}
-          onToggleMusic={handleToggleMusic}
-        />
-      )}
+      {/* Keep Cosmic Space Lobby mounted for instant, zero-lag scene transitions */}
+      <LobbyScreen
+        isVisible={screen === 'TITLE'}
+        lobbyStars={saveData.stars}
+        lobbyRockets={saveData.rockets}
+        currentLevelId={saveData.currentLevelId}
+        records={saveData.records}
+        muted={saveData.muted}
+        musicMuted={saveData.musicMuted}
+        dailyLoginClaimable={dailyLoginClaimable}
+        dailyMissionClaimable={dailyMissionClaimable}
+        onPlayCurrent={handlePlayFromLobby}
+        onOpenSectorAtlas={(chapterId) => {
+          setAtlasInitialChapter(chapterId);
+          setActiveModal('sectors');
+        }}
+        onOpenDailyLogin={() => setActiveModal('daily_login')}
+        onOpenDailyMission={() => setActiveModal('daily_mission')}
+        onOpenEquipments={() => setActiveModal('equipments')}
+        onOpenSpaceStation={() => setActiveModal('space_station')}
+        onToggleMute={handleToggleMute}
+        onToggleMusic={handleToggleMusic}
+      />
 
-      {/* Active Gameplay Paper-Craft HUD */}
+      {/* Active Gameplay Cosmic HUD */}
       {screen !== 'TITLE' && (
         <GameHud
           level={activeLevel}

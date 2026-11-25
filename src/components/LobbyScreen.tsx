@@ -1,11 +1,10 @@
-import React, { useEffect, useState } from 'react';
-import { Download, Lock } from 'lucide-react';
+import React from 'react';
+import { Download } from 'lucide-react';
 import { usePWAInstall } from '../hooks/useInstallPrompt';
-import { CHAPTERS } from '../game/levels';
-import { getChapterClearedCount, isChapterUnlocked } from '../game/storage';
 import { LevelRecord } from '../types';
 
 interface LobbyScreenProps {
+  isVisible: boolean;
   lobbyStars: number;
   lobbyRockets: number;
   currentLevelId: number;
@@ -24,27 +23,11 @@ interface LobbyScreenProps {
   onToggleMusic: () => void;
 }
 
-interface SectorArcNode {
-  id: number;
-  sprite: string;
-  leftPct: number;
-  topPct: number;
-}
-
-const SECTOR_ARC_NODES: SectorArcNode[] = [
-  { id: 1, sprite: './assets/lobby/sector-01.png', leftPct: 24, topPct: 22 },
-  { id: 2, sprite: './assets/lobby/sector-02.png', leftPct: 11, topPct: 46 },
-  { id: 3, sprite: './assets/lobby/sector-03.png', leftPct: 20, topPct: 69 },
-  { id: 4, sprite: './assets/lobby/sector-04.png', leftPct: 37, topPct: 82 },
-  { id: 5, sprite: './assets/lobby/sector-05.png', leftPct: 57, topPct: 90 },
-  { id: 6, sprite: './assets/lobby/sector-06.png', leftPct: 77, topPct: 77 },
-];
-
 export const LobbyScreen: React.FC<LobbyScreenProps> = ({
+  isVisible,
   lobbyStars,
   lobbyRockets,
   currentLevelId,
-  records,
   muted,
   musicMuted,
   dailyLoginClaimable,
@@ -60,43 +43,102 @@ export const LobbyScreen: React.FC<LobbyScreenProps> = ({
 }) => {
   const { canInstall, install } = usePWAInstall();
   const currentChapterId = Math.min(6, Math.max(1, Math.ceil(currentLevelId / 10)));
-  const [selectedSector, setSelectedSector] = useState<number>(currentChapterId);
-
-  useEffect(() => {
-    setSelectedSector(currentChapterId);
-  }, [currentChapterId]);
-
-  const handleSectorClick = (chapterId: number) => {
-    if (isChapterUnlocked(chapterId, records)) {
-      setSelectedSector(chapterId);
-    }
-    onOpenSectorAtlas(chapterId);
-  };
 
   return (
     <section
-      aria-label="Pocket Orbit Space Lobby"
-      className="absolute inset-0 z-20 flex flex-col items-center justify-between overflow-hidden pointer-events-none"
+      aria-label="Pocket Orbit Space Launchpad Lobby"
+      aria-hidden={!isVisible}
+      className={`absolute inset-0 z-20 flex flex-col justify-between overflow-hidden bg-[#080C38] transition-opacity duration-200 ease-out ${
+        isVisible ? 'opacity-100 pointer-events-auto visible' : 'opacity-0 pointer-events-none invisible'
+      }`}
     >
-      {/* TOP STACK: Header -> Equal Gap -> POCKET ORBIT -> Exact Same Equal Gap -> Sector Orbital Hub */}
-      <div className="w-full flex flex-col items-center shrink-0">
-        {/* 1. TOP BAR: Music (left) · Stars & Rockets Stitched Pills (center) · Sound (right) */}
-        <header className="relative w-full max-w-[560px] mx-auto px-3.5 pt-3 sm:px-6 sm:pt-4 flex items-center justify-between gap-2 pointer-events-auto z-30">
-          {/* Left: Terracotta Stitched Music Button */}
+      {/* FULL-BLEED COSMIC LAUNCHPAD BACKDROP FROM ASSET SHEET */}
+      <div className="absolute inset-0 pointer-events-none select-none overflow-hidden">
+        <img
+          src="./assets/cosmic/lobby-bg.png"
+          alt=""
+          aria-hidden="true"
+          referrerPolicy="no-referrer"
+          draggable={false}
+          className="w-full h-full object-cover object-bottom"
+        />
+        {/* Subtle radial edge vignette so wide screens blend cleanly */}
+        <div
+          aria-hidden="true"
+          className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,transparent_45%,rgba(5,8,34,0.42)_100%)]"
+        />
+      </div>
+
+      {/* 1. TOP BAR: Stars & Rockets Glossy Pills (Left) · Music & Sound Glossy Buttons (Right) */}
+      <header className="relative z-30 w-full max-w-[540px] mx-auto px-3.5 pt-3 sm:px-5 sm:pt-4 flex items-center justify-between gap-2">
+        {/* Left: Glossy Star & Rocket Currency Pills */}
+        <div className="flex items-center gap-2 sm:gap-2.5 min-w-0">
+          {/* Stars Pill */}
+          <div
+            aria-label={`${lobbyStars} Stars`}
+            className="relative h-10 sm:h-11 w-[108px] sm:w-[126px] shrink-0 select-none"
+          >
+            <img
+              src="./assets/cosmic/pill-star.png"
+              alt=""
+              aria-hidden="true"
+              referrerPolicy="no-referrer"
+              draggable={false}
+              className="w-full h-full object-contain drop-shadow-[0_4px_8px_rgba(4,8,36,0.55)]"
+            />
+            <span className="absolute inset-y-0 left-[38%] right-[12%] flex items-center justify-center font-display font-bold text-sm sm:text-base text-white tabular-nums leading-none drop-shadow-[0_1.5px_2px_rgba(4,8,36,0.9)]">
+              {lobbyStars.toLocaleString()}
+            </span>
+          </div>
+
+          {/* Rockets Pill */}
+          <div
+            aria-label={`${lobbyRockets} Rockets`}
+            className="relative h-10 sm:h-11 w-[104px] sm:w-[122px] shrink-0 select-none"
+          >
+            <img
+              src="./assets/cosmic/pill-rocket.png"
+              alt=""
+              aria-hidden="true"
+              referrerPolicy="no-referrer"
+              draggable={false}
+              className="w-full h-full object-contain drop-shadow-[0_4px_8px_rgba(4,8,36,0.55)]"
+            />
+            <span className="absolute inset-y-0 left-[40%] right-[12%] flex items-center justify-center font-display font-bold text-sm sm:text-base text-white tabular-nums leading-none drop-shadow-[0_1.5px_2px_rgba(4,8,36,0.9)]">
+              {lobbyRockets.toLocaleString()}
+            </span>
+          </div>
+        </div>
+
+        {/* Right: Glossy Blue Music & Sound Buttons */}
+        <div className="flex items-center gap-2 shrink-0">
+          {canInstall && (
+            <button
+              type="button"
+              onClick={() => void install()}
+              aria-label="Install Pocket Orbit"
+              className="glossy-btn-gold h-9 px-3 rounded-full flex items-center gap-1 text-xs font-display font-bold whitespace-nowrap transition-transform focus-visible:outline-2 focus-visible:outline-[#38E8FF]"
+            >
+              <Download className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Install</span>
+            </button>
+          )}
+
+          {/* Music Button */}
           <button
             type="button"
             onClick={onToggleMusic}
             aria-label={musicMuted ? 'Enable music' : 'Mute music'}
             aria-pressed={!musicMuted}
-            className="relative w-12 h-12 sm:w-14 sm:h-14 shrink-0 rounded-full flex items-center justify-center transition-transform hover:scale-105 active:scale-95 focus-visible:outline-2 focus-visible:outline-[#27324F]"
+            className="relative w-11 h-11 sm:w-12 sm:h-12 rounded-full flex items-center justify-center transition-transform hover:scale-105 active:scale-95 focus-visible:outline-2 focus-visible:outline-[#38E8FF]"
           >
             <img
-              src="./assets/lobby/btn-music.png"
+              src="./assets/cosmic/btn-music.png"
               alt="Music"
               referrerPolicy="no-referrer"
               draggable={false}
-              className={`w-full h-full object-contain select-none transition-opacity ${
-                musicMuted ? 'opacity-55 grayscale-[35%]' : 'opacity-100'
+              className={`w-full h-full object-contain select-none drop-shadow-[0_4px_8px_rgba(4,8,36,0.6)] transition-opacity ${
+                musicMuted ? 'opacity-60 saturate-50' : 'opacity-100'
               }`}
             />
             {musicMuted && (
@@ -104,65 +146,26 @@ export const LobbyScreen: React.FC<LobbyScreenProps> = ({
                 aria-hidden="true"
                 className="absolute inset-0 flex items-center justify-center pointer-events-none"
               >
-                <span className="w-8 sm:w-9 h-[3px] bg-[#27324F] border border-[#FAF3E6] -rotate-45 rounded-full shadow-sm" />
+                <span className="w-7 h-[3px] bg-[#FF5224] border border-white -rotate-45 rounded-full shadow-md" />
               </span>
             )}
           </button>
 
-          {/* Center: Stitched Stars & Rockets Currency Pills */}
-          <div className="flex items-center justify-center gap-2 sm:gap-3 min-w-0">
-            {/* Stars Currency Pill */}
-            <div
-              aria-label={`${lobbyStars} Stars`}
-              className="relative h-10 sm:h-12 w-[116px] sm:w-[144px] shrink-0 select-none"
-            >
-              <img
-                src="./assets/lobby/pill-star.png"
-                alt=""
-                aria-hidden="true"
-                referrerPolicy="no-referrer"
-                draggable={false}
-                className="w-full h-full object-contain"
-              />
-              <span className="absolute inset-y-0 left-[34%] right-[10%] flex items-center justify-center font-display font-extrabold text-[15px] sm:text-lg text-[#27324F] tabular-nums leading-none tracking-tight">
-                {lobbyStars.toLocaleString()}
-              </span>
-            </div>
-
-            {/* Rockets Currency Pill */}
-            <div
-              aria-label={`${lobbyRockets} Rockets`}
-              className="relative h-11 sm:h-[54px] w-[108px] sm:w-[134px] shrink-0 select-none"
-            >
-              <img
-                src="./assets/lobby/pill-rocket.png"
-                alt=""
-                aria-hidden="true"
-                referrerPolicy="no-referrer"
-                draggable={false}
-                className="w-full h-full object-contain"
-              />
-              <span className="absolute inset-y-0 left-[40%] right-[10%] flex items-center justify-center font-display font-extrabold text-[15px] sm:text-lg text-[#27324F] tabular-nums leading-none tracking-tight">
-                {lobbyRockets.toLocaleString()}
-              </span>
-            </div>
-          </div>
-
-          {/* Right: Denim Stitched Sound Button */}
+          {/* Sound Button */}
           <button
             type="button"
             onClick={onToggleMute}
             aria-label={muted ? 'Unmute sound effects' : 'Mute sound effects'}
             aria-pressed={!muted}
-            className="relative w-12 h-12 sm:w-14 sm:h-14 shrink-0 rounded-full flex items-center justify-center transition-transform hover:scale-105 active:scale-95 focus-visible:outline-2 focus-visible:outline-[#27324F]"
+            className="relative w-11 h-11 sm:w-12 sm:h-12 rounded-full flex items-center justify-center transition-transform hover:scale-105 active:scale-95 focus-visible:outline-2 focus-visible:outline-[#38E8FF]"
           >
             <img
-              src="./assets/lobby/btn-sound.png"
+              src="./assets/cosmic/btn-sound.png"
               alt="Sound"
               referrerPolicy="no-referrer"
               draggable={false}
-              className={`w-full h-full object-contain select-none transition-opacity ${
-                muted ? 'opacity-55 grayscale-[35%]' : 'opacity-100'
+              className={`w-full h-full object-contain select-none drop-shadow-[0_4px_8px_rgba(4,8,36,0.6)] transition-opacity ${
+                muted ? 'opacity-60 saturate-50' : 'opacity-100'
               }`}
             />
             {muted && (
@@ -170,332 +173,201 @@ export const LobbyScreen: React.FC<LobbyScreenProps> = ({
                 aria-hidden="true"
                 className="absolute inset-0 flex items-center justify-center pointer-events-none"
               >
-                <span className="w-8 sm:w-9 h-[3px] bg-[#27324F] border border-[#FAF3E6] -rotate-45 rounded-full shadow-sm" />
+                <span className="w-7 h-[3px] bg-[#FF5224] border border-white -rotate-45 rounded-full shadow-md" />
               </span>
             )}
           </button>
-
-          {/* Optional unobtrusive PWA Install chip when browser supports install */}
-          {canInstall && (
-            <button
-              type="button"
-              onClick={() => void install()}
-              aria-label="Install Pocket Orbit"
-              className="paper-btn-gold absolute -bottom-8 right-3.5 sm:right-6 h-7 px-2.5 rounded-full flex items-center gap-1 text-[11px] font-display font-bold whitespace-nowrap transition-transform focus-visible:outline-2 focus-visible:outline-[#27324F]"
-            >
-              <Download className="w-3.5 h-3.5" />
-              <span>Install</span>
-            </button>
-          )}
-        </header>
-
-        {/* 2. CENTERED HAND-CUT POCKET ORBIT TITLE LOGO (equal gap from Top Bar) */}
-        <div className="relative w-full flex justify-center px-6 mt-4 sm:mt-6 z-20 select-none pointer-events-none">
-          <img
-            src="./assets/lobby/logo.png"
-            alt="Pocket Orbit"
-            referrerPolicy="no-referrer"
-            draggable={false}
-            className="w-[215px] sm:w-[270px] md:w-[295px] max-w-[68vw] h-auto object-contain"
-          />
         </div>
+      </header>
 
-        {/* 3. SECTOR ORBITAL HUB (exact same equal gap below Pocket Orbit, lifted higher) */}
-        <div className="relative w-full flex justify-center px-4 mt-4 sm:mt-6 z-20 pointer-events-auto">
-          <div className="relative w-[min(66vw,268px)] sm:w-[min(56vw,325px)] max-h-[37dvh] sm:max-h-[40dvh] aspect-[1/1.05] flex items-center justify-center">
-            {/* Concentric Dashed Twine Orbits, Rocket Trail & Tiny Accent Stars */}
-            <svg
-              viewBox="0 0 360 390"
-              className="absolute inset-0 w-full h-full pointer-events-none select-none overflow-visible"
-              aria-hidden="true"
-            >
-              {/* Outer dashed orbital arc connecting 01 → 02 → 03 → 04 → 05 → 06 */}
-              <circle
-                cx="196"
-                cy="184"
-                r="146"
-                fill="none"
-                stroke="#8B765B"
-                strokeWidth="2.1"
-                strokeDasharray="6 6"
-                opacity="0.72"
-              />
+      {/* 2. UPPER CENTER: GLOSSY 3D RAINBOW-RINGED POCKET ORBIT LOGO */}
+      <div className="relative z-20 w-full flex justify-center px-6 mt-1 sm:mt-2 select-none pointer-events-none">
+        <img
+          src="./assets/cosmic/logo.png"
+          alt="Pocket Orbit"
+          referrerPolicy="no-referrer"
+          draggable={false}
+          className="w-[245px] sm:w-[300px] md:w-[330px] max-w-[74vw] h-auto object-contain drop-shadow-[0_8px_22px_rgba(32,124,255,0.48)]"
+        />
+      </div>
 
-              {/* Inner dashed orbital arc framing the central stitched planet */}
-              <circle
-                cx="208"
-                cy="176"
-                r="102"
-                fill="none"
-                stroke="#8B765B"
-                strokeWidth="1.9"
-                strokeDasharray="5 5"
-                opacity="0.65"
-              />
+      {/* 3. CENTER LAUNCHPAD ROCKET HERO + GLOWING ORBIT RING + BILLOWING STEAM */}
+      <div className="relative z-20 flex-1 flex flex-col items-center justify-center min-h-0 px-4 select-none pointer-events-none">
+        <div className="relative flex items-center justify-center w-[210px] sm:w-[250px] h-full max-h-[270px] sm:max-h-[320px]">
+          {/* Glowing golden orbital ring encircling the rocket's thruster */}
+          <svg
+            viewBox="0 0 260 120"
+            className="absolute w-[112%] h-auto bottom-[26%] opacity-90 drop-shadow-[0_0_12px_rgba(255,204,48,0.85)]"
+            aria-hidden="true"
+          >
+            <ellipse
+              cx="130"
+              cy="60"
+              rx="112"
+              ry="28"
+              fill="none"
+              stroke="#FFD84D"
+              strokeWidth="2.8"
+            />
+            <ellipse
+              cx="130"
+              cy="60"
+              rx="112"
+              ry="28"
+              fill="none"
+              stroke="#FFF7C2"
+              strokeWidth="1.2"
+              opacity="0.8"
+            />
+          </svg>
 
-              {/* Curved twine trail swooping from the planet up into the flying rocket */}
-              <path
-                d="M286 154 C312 146 322 114 308 88"
-                fill="none"
-                stroke="#B5A188"
-                strokeWidth="2.4"
-                strokeLinecap="round"
-                opacity="0.82"
-              />
+          {/* Soft luminous launchpad blast glow & steam clouds */}
+          <div
+            aria-hidden="true"
+            className="absolute bottom-[4%] w-[180px] sm:w-[220px] h-[54px] rounded-full bg-[radial-gradient(ellipse_at_center,rgba(255,244,196,0.92)_0%,rgba(216,196,255,0.58)_45%,rgba(122,94,255,0)_76%)] blur-[3px]"
+          />
 
-              {/* 3 tiny warm ochre paper stars tucked along the orbital rings */}
-              <polygon
-                points="135,96 138,103 145,103 139,108 141,115 135,111 129,115 131,108 125,103 132,103"
-                fill="#F1BD53"
-                stroke="#C98F32"
-                strokeWidth="0.7"
-              />
-              <polygon
-                points="96,178 99,185 106,185 100,190 102,197 96,193 90,197 92,190 86,185 93,185"
-                fill="#CFA265"
-                stroke="#9C733E"
-                strokeWidth="0.7"
-              />
-              <polygon
-                points="224,302 228,311 237,311 230,316 232,325 224,320 216,325 218,316 211,311 220,311"
-                fill="#F1BD53"
-                stroke="#C98F32"
-                strokeWidth="0.7"
-              />
-            </svg>
-
-            {/* Flying Paper Rocket perched above-right of the central planet */}
-            <div
-              aria-hidden="true"
-              className="absolute pointer-events-none select-none z-20"
-              style={{
-                left: '84%',
-                top: '14%',
-                width: '25%',
-                transform: 'translate(-50%, -50%)',
-              }}
-            >
-              <img
-                src="./assets/lobby/rocket-fly.png"
-                alt=""
-                referrerPolicy="no-referrer"
-                draggable={false}
-                className="animate-cloud-slow w-full h-auto object-contain"
-              />
-            </div>
-
-            {/* Central Layered Stitched Planet ("SECTOR N") */}
-            <button
-              type="button"
-              onClick={() => onOpenSectorAtlas(selectedSector)}
-              aria-label={`Open Sector ${selectedSector} levels`}
-              style={{
-                left: '61%',
-                top: '44%',
-                width: '62%',
-                transform: 'translate(-50%, -50%)',
-              }}
-              className="group absolute z-10 flex items-center justify-center rounded-full transition-transform hover:scale-[1.03] active:scale-[0.97] focus-visible:outline-2 focus-visible:outline-[#27324F]"
-            >
-              <img
-                src="./assets/lobby/planet.png"
-                alt={`Sector ${selectedSector}`}
-                referrerPolicy="no-referrer"
-                draggable={false}
-                className="w-full h-auto object-contain select-none"
-              />
-              {/* Dynamic Paper-Cut Terracotta Sector Number positioned right below "SECTOR" */}
-              <span
-                aria-hidden="true"
-                className="absolute left-[53%] top-[53%] -translate-x-1/2 -translate-y-1/2 font-display font-extrabold text-[20px] sm:text-[26px] leading-none text-[#C45B38] select-none pointer-events-none"
-                style={{
-                  WebkitTextStroke: '1.2px #FAF3E6',
-                  paintOrder: 'stroke fill',
-                  textShadow: '0 2px 0 rgba(39,50,79,0.28)',
-                }}
-              >
-                {selectedSector}
-              </span>
-            </button>
-
-            {/* All 6 Stitched Circular Sector Coins (01–06) arranged on the orbital arc */}
-            {SECTOR_ARC_NODES.map((node) => {
-              const chapter = CHAPTERS[node.id - 1];
-              const unlocked = isChapterUnlocked(node.id, records);
-              const cleared = getChapterClearedCount(node.id, records);
-              const isSelected = selectedSector === node.id;
-
-              return (
-                <button
-                  key={node.id}
-                  type="button"
-                  onClick={() => handleSectorClick(node.id)}
-                  aria-label={`Sector ${node.id}: ${chapter.title}, ${
-                    unlocked ? `${cleared} of 10 levels cleared` : 'Locked'
-                  }`}
-                  style={{
-                    left: `${node.leftPct}%`,
-                    top: `${node.topPct}%`,
-                    width: '21.5%',
-                    transform: 'translate(-50%, -50%)',
-                  }}
-                  className="group absolute z-20 min-w-[44px] min-h-[44px] rounded-full flex items-center justify-center transition-transform hover:scale-110 active:scale-95 focus-visible:outline-2 focus-visible:outline-[#27324F]"
-                >
-                  <img
-                    src={node.sprite}
-                    alt={`Sector 0${node.id}`}
-                    referrerPolicy="no-referrer"
-                    draggable={false}
-                    className={`w-full h-auto object-contain select-none transition-all rounded-full ${
-                      isSelected && unlocked
-                        ? 'ring-[2.5px] ring-[#FAF3E6] shadow-[0_0_0_4px_rgba(199,92,59,0.45)]'
-                        : ''
-                    } ${!unlocked ? 'brightness-[0.86] saturate-[0.72]' : ''}`}
-                  />
-
-                  {/* Crisp Stitched Lock Badge on Locked Sectors */}
-                  {!unlocked && (
-                    <span
-                      aria-hidden="true"
-                      className="absolute -top-0.5 -right-0.5 w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-[#C75C3B] border-2 border-[#FAF3E6] shadow-[0_2px_0_rgba(39,50,79,0.32)] flex items-center justify-center text-[#FAF3E6]"
-                    >
-                      <Lock className="w-2.5 h-2.5 sm:w-3 sm:h-3 stroke-[2.8]" />
-                    </span>
-                  )}
-                </button>
-              );
-            })}
-          </div>
+          {/* Hovering Cartoon Rocket with Roaring Flame */}
+          <img
+            src="./assets/cosmic/rocket.png"
+            alt=""
+            aria-hidden="true"
+            referrerPolicy="no-referrer"
+            loading="eager"
+            decoding="sync"
+            draggable={false}
+            className={`${
+              isVisible ? 'animate-rocket-hover' : ''
+            } relative z-10 h-[84%] max-h-[245px] sm:max-h-[290px] w-auto object-contain drop-shadow-[0_12px_22px_rgba(255,152,20,0.45)]`}
+          />
         </div>
       </div>
 
-      {/* BOTTOM STACK: 4 Equal-Gap Shadowed Action Buttons Row + Stitched PLAY CTA */}
-      <footer className="relative w-full max-w-[460px] mx-auto px-3.5 sm:px-6 pb-3 sm:pb-5 pt-2 flex flex-col items-center gap-3 sm:gap-4 z-30 pointer-events-auto">
-        {/* 4. SINGLE HORIZONTAL ROW: Daily Login · Daily Mission · Equipment · Space Station (Equal Gaps + Crisp Shadows) */}
-        <nav
-          aria-label="Lobby Actions"
-          className="w-full grid grid-cols-4 gap-3 sm:gap-5 items-start"
-        >
-          {/* Daily Login */}
-          <button
-            type="button"
-            onClick={onOpenDailyLogin}
-            className="group relative flex flex-col items-center gap-1.5 transition-transform hover:-translate-y-0.5 active:scale-95 focus-visible:outline-2 focus-visible:outline-[#27324F] rounded-2xl"
-          >
-            <div className="relative w-[58px] h-[58px] sm:w-[70px] sm:h-[70px] flex items-center justify-center">
-              <img
-                src="./assets/lobby/btn-daily-login.png"
-                alt="Daily Login"
-                referrerPolicy="no-referrer"
-                draggable={false}
-                className="w-full h-full object-contain select-none drop-shadow-[0_6px_8px_rgba(39,50,79,0.34)] group-hover:drop-shadow-[0_9px_10px_rgba(39,50,79,0.38)] transition-all"
-              />
-              {dailyLoginClaimable && (
-                <span
-                  aria-label="Daily login reward ready"
-                  className="absolute top-0 right-0 w-3.5 h-3.5 rounded-full bg-[#D94F38] border-2 border-[#FAF3E6] shadow-sm"
-                />
-              )}
-            </div>
-            <span className="font-display font-extrabold text-[10px] sm:text-xs text-[#27324F] leading-[1.12] tracking-wide uppercase text-center">
-              Daily
-              <br />
-              Login
-            </span>
-          </button>
-
-          {/* Daily Mission */}
-          <button
-            type="button"
-            onClick={onOpenDailyMission}
-            className="group relative flex flex-col items-center gap-1.5 transition-transform hover:-translate-y-0.5 active:scale-95 focus-visible:outline-2 focus-visible:outline-[#27324F] rounded-2xl"
-          >
-            <div className="relative w-[58px] h-[58px] sm:w-[70px] sm:h-[70px] flex items-center justify-center">
-              <img
-                src="./assets/lobby/btn-daily-mission.png"
-                alt="Daily Mission"
-                referrerPolicy="no-referrer"
-                draggable={false}
-                className="w-full h-full object-contain select-none drop-shadow-[0_6px_8px_rgba(39,50,79,0.34)] group-hover:drop-shadow-[0_9px_10px_rgba(39,50,79,0.38)] transition-all"
-              />
-              {dailyMissionClaimable && (
-                <span
-                  aria-label="Mission reward ready"
-                  className="absolute top-0 right-0 w-3.5 h-3.5 rounded-full bg-[#D94F38] border-2 border-[#FAF3E6] shadow-sm"
-                />
-              )}
-            </div>
-            <span className="font-display font-extrabold text-[10px] sm:text-xs text-[#27324F] leading-[1.12] tracking-wide uppercase text-center">
-              Daily
-              <br />
-              Mission
-            </span>
-          </button>
-
-          {/* Equipment */}
-          <button
-            type="button"
-            onClick={onOpenEquipments}
-            className="group relative flex flex-col items-center gap-1.5 transition-transform hover:-translate-y-0.5 active:scale-95 focus-visible:outline-2 focus-visible:outline-[#27324F] rounded-2xl"
-          >
-            <div className="relative w-[58px] h-[58px] sm:w-[70px] sm:h-[70px] flex items-center justify-center">
-              <img
-                src="./assets/lobby/btn-equipment.png"
-                alt="Equipment"
-                referrerPolicy="no-referrer"
-                draggable={false}
-                className="w-full h-full object-contain select-none drop-shadow-[0_6px_8px_rgba(39,50,79,0.34)] group-hover:drop-shadow-[0_9px_10px_rgba(39,50,79,0.38)] transition-all"
-              />
-            </div>
-            <span className="font-display font-extrabold text-[10px] sm:text-xs text-[#27324F] leading-[1.12] tracking-wide uppercase text-center">
-              Equipment
-            </span>
-          </button>
-
-          {/* Space Station */}
-          <button
-            type="button"
-            onClick={onOpenSpaceStation}
-            className="group relative flex flex-col items-center gap-1.5 transition-transform hover:-translate-y-0.5 active:scale-95 focus-visible:outline-2 focus-visible:outline-[#27324F] rounded-2xl"
-          >
-            <div className="relative w-[58px] h-[58px] sm:w-[70px] sm:h-[70px] flex items-center justify-center">
-              <img
-                src="./assets/lobby/btn-space-station.png"
-                alt="Space Station"
-                referrerPolicy="no-referrer"
-                draggable={false}
-                className="w-full h-full object-contain select-none drop-shadow-[0_6px_8px_rgba(39,50,79,0.34)] group-hover:drop-shadow-[0_9px_10px_rgba(39,50,79,0.38)] transition-all"
-              />
-            </div>
-            <span className="font-display font-extrabold text-[10px] sm:text-xs text-[#27324F] leading-[1.12] tracking-wide uppercase text-center">
-              Space
-              <br />
-              Station
-            </span>
-          </button>
-        </nav>
-
-        {/* 5. STITCHED PLAY CTA + REQUIRED HINT TEXT */}
-        <div className="flex flex-col items-center gap-1.5">
+      {/* 4. LOWER CENTER: JUICY GOLDEN PLAY >> BUTTON + 5-BUTTON GLOSSY ROYAL-BLUE DOCK */}
+      <footer className="relative z-30 w-full max-w-[520px] mx-auto px-2.5 sm:px-5 pb-3 sm:pb-5 flex flex-col items-center gap-3 sm:gap-4">
+        {/* PLAY >> Button sitting prominently over the launchpad */}
+        <div className="flex flex-col items-center gap-1">
           <button
             type="button"
             onClick={onPlayCurrent}
             aria-label="Play Pocket Orbit"
-            className="relative w-[166px] sm:w-[206px] transition-transform hover:-translate-y-0.5 hover:scale-[1.02] active:translate-y-0.5 active:scale-[0.97] focus-visible:outline-2 focus-visible:outline-[#27324F] rounded-2xl"
+            className="relative w-[200px] sm:w-[238px] transition-transform hover:scale-[1.04] hover:-translate-y-0.5 active:scale-[0.96] focus-visible:outline-2 focus-visible:outline-[#38E8FF] rounded-full"
           >
             <img
-              src="./assets/lobby/btn-play.png"
+              src="./assets/cosmic/btn-play.png"
               alt="PLAY"
               referrerPolicy="no-referrer"
               draggable={false}
-              className="w-full h-auto object-contain select-none drop-shadow-[0_5px_6px_rgba(39,50,79,0.26)]"
+              className="w-full h-auto object-contain select-none drop-shadow-[0_10px_22px_rgba(255,136,0,0.5)]"
             />
           </button>
 
-          <p className="text-[11px] sm:text-xs font-bold text-[#5E5447] tracking-wide text-center">
+          <p className="text-[11px] sm:text-xs font-bold text-[#B8D8FF] tracking-wide text-center drop-shadow-[0_1px_3px_rgba(4,8,34,0.95)]">
             Tap Anywhere to shift orbit.
           </p>
         </div>
+
+        {/* 5 Glossy Blue Bottom Dock Buttons: Sectors · Daily Login · Daily Mission · Equipments · Space Station */}
+        <nav
+          aria-label="Lobby Navigation"
+          className="w-full grid grid-cols-5 gap-1.5 sm:gap-2.5 items-end"
+        >
+          {/* 1. Sectors */}
+          <button
+            type="button"
+            onClick={() => onOpenSectorAtlas(currentChapterId)}
+            aria-label="Sectors"
+            className="group relative flex items-center justify-center transition-transform hover:-translate-y-1 active:scale-95 focus-visible:outline-2 focus-visible:outline-[#38E8FF] rounded-2xl"
+          >
+            <img
+              src="./assets/cosmic/dock-sectors.png"
+              alt=""
+              aria-hidden="true"
+              referrerPolicy="no-referrer"
+              draggable={false}
+              className="w-full h-auto object-contain select-none drop-shadow-[0_6px_12px_rgba(4,8,38,0.72)] group-hover:brightness-110 transition-all"
+            />
+            <span className="absolute inset-x-0 bottom-[16%] font-display font-bold text-[10px] sm:text-xs text-white text-center leading-none drop-shadow-[0_1.5px_2px_rgba(4,12,68,0.95)] pointer-events-none">
+              Sectors
+            </span>
+          </button>
+
+          {/* 2. Daily Login */}
+          <button
+            type="button"
+            onClick={onOpenDailyLogin}
+            aria-label="Daily Login"
+            className="group relative flex items-center justify-center transition-transform hover:-translate-y-1 active:scale-95 focus-visible:outline-2 focus-visible:outline-[#38E8FF] rounded-2xl"
+          >
+            <img
+              src="./assets/cosmic/dock-daily-login.png"
+              alt="Daily Login"
+              referrerPolicy="no-referrer"
+              draggable={false}
+              className="w-full h-auto object-contain select-none drop-shadow-[0_6px_12px_rgba(4,8,38,0.72)] group-hover:brightness-110 transition-all"
+            />
+            {dailyLoginClaimable && (
+              <span
+                aria-label="Daily login reward ready"
+                className="absolute top-0.5 right-0.5 w-3.5 h-3.5 rounded-full bg-[#FF4626] border-2 border-white shadow-[0_0_8px_rgba(255,70,38,0.9)]"
+              />
+            )}
+          </button>
+
+          {/* 3. Daily Mission */}
+          <button
+            type="button"
+            onClick={onOpenDailyMission}
+            aria-label="Daily Mission"
+            className="group relative flex items-center justify-center transition-transform hover:-translate-y-1 active:scale-95 focus-visible:outline-2 focus-visible:outline-[#38E8FF] rounded-2xl"
+          >
+            <img
+              src="./assets/cosmic/dock-daily-mission.png"
+              alt="Daily Mission"
+              referrerPolicy="no-referrer"
+              draggable={false}
+              className="w-full h-auto object-contain select-none drop-shadow-[0_6px_12px_rgba(4,8,38,0.72)] group-hover:brightness-110 transition-all"
+            />
+            {dailyMissionClaimable && (
+              <span
+                aria-label="Mission reward ready"
+                className="absolute top-0.5 right-0.5 w-3.5 h-3.5 rounded-full bg-[#FF4626] border-2 border-white shadow-[0_0_8px_rgba(255,70,38,0.9)]"
+              />
+            )}
+          </button>
+
+          {/* 4. Equipments */}
+          <button
+            type="button"
+            onClick={onOpenEquipments}
+            aria-label="Equipments"
+            className="group relative flex items-center justify-center transition-transform hover:-translate-y-1 active:scale-95 focus-visible:outline-2 focus-visible:outline-[#38E8FF] rounded-2xl"
+          >
+            <img
+              src="./assets/cosmic/dock-equipments.png"
+              alt="Equipments"
+              referrerPolicy="no-referrer"
+              draggable={false}
+              className="w-full h-auto object-contain select-none drop-shadow-[0_6px_12px_rgba(4,8,38,0.72)] group-hover:brightness-110 transition-all"
+            />
+          </button>
+
+          {/* 5. Space Station */}
+          <button
+            type="button"
+            onClick={onOpenSpaceStation}
+            aria-label="Space Station"
+            className="group relative flex items-center justify-center transition-transform hover:-translate-y-1 active:scale-95 focus-visible:outline-2 focus-visible:outline-[#38E8FF] rounded-2xl"
+          >
+            <img
+              src="./assets/cosmic/dock-space-station.png"
+              alt="Space Station"
+              referrerPolicy="no-referrer"
+              draggable={false}
+              className="w-full h-auto object-contain select-none drop-shadow-[0_6px_12px_rgba(4,8,38,0.72)] group-hover:brightness-110 transition-all"
+            />
+          </button>
+        </nav>
       </footer>
     </section>
   );

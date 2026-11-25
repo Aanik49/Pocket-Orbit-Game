@@ -39,172 +39,178 @@ export const LevelStartModal: React.FC<LevelStartModalProps> = ({
       role="dialog"
       aria-modal="true"
       aria-label={`Launch Level ${level.id}`}
-      className="fixed inset-0 z-40 bg-[#14182B]/74 flex items-center justify-center p-4 sm:p-6"
+      className="fixed inset-0 z-40 bg-[#040724]/78 backdrop-blur-[2px] flex items-center justify-center p-4"
       onClick={onClose}
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        className="animate-modal-enter paper-cream-surface paper-cutout-shadow w-full max-w-md rounded-3xl border-[3px] border-[#27324F] p-5 sm:p-6 flex flex-col max-h-[90dvh] overflow-hidden"
+        className="animate-modal-enter cosmic-modal-frame relative w-full max-w-[348px] max-h-[82dvh] flex flex-col"
       >
-        {/* Header */}
-        <div className="shrink-0 flex items-start justify-between gap-3 pb-3 border-b-2 border-dashed border-[#D3C4AA]">
-          <div>
-            <div className="flex items-center gap-2 flex-wrap">
-              <span className="font-mono-num text-xs font-bold text-[#C75C3B]">
+        {/* Uniform Compact Solid Orange-Red Close Button */}
+        <button
+          type="button"
+          onClick={onClose}
+          aria-label="Cancel launch"
+          className="glossy-close-orange absolute -top-2.5 -right-2.5 z-30 w-8 h-8 rounded-full flex items-center justify-center transition-transform focus-visible:outline-2 focus-visible:outline-[#3DF2FF]"
+        >
+          <X className="w-4 h-4 stroke-[3]" />
+        </button>
+
+        <div className="cosmic-modal-inner p-3.5 sm:p-4 flex flex-col max-h-[calc(82dvh-5px)] overflow-hidden">
+          {/* Top Level Banner Box */}
+          <div className="shrink-0 rounded-2xl px-3.5 py-2.5 bg-[#0E155C] border border-[#5B7EFF]/60">
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <span className="font-display text-xs font-bold text-[#FFA726]">
                 Sector {level.chapter} · Level {String(level.id).padStart(2, '0')}
               </span>
               {level.timeLimit !== null && (
                 <span
-                  className={`inline-flex items-center gap-1 text-[11px] font-mono-num font-bold px-2 py-0.5 rounded-full ${
+                  className={`inline-flex items-center gap-1 text-[10px] font-mono-num font-bold px-2 py-0.5 rounded-full border ${
                     timerOffBySat
-                      ? 'bg-[#E9E0F7] text-[#66469A]'
-                      : 'bg-[#F8E2D4] text-[#B8492A]'
+                      ? 'bg-[#3C2282] border-[#B682FF] text-[#E6CEFF]'
+                      : 'bg-[#631B1B] border-[#FF7E57] text-[#FFD5C4]'
                   }`}
                 >
-                  <Clock className="w-3 h-3" />
+                  <Clock className="w-2.5 h-2.5" />
                   {timerOffBySat ? 'Timer OFF' : `${level.timeLimit}s Limit`}
                 </span>
               )}
             </div>
-            <h2 className="font-display text-2xl font-bold text-[#27324F] mt-0.5 leading-tight">
+            <h2 className="font-display text-xl sm:text-2xl font-extrabold text-[#FFF2C9] mt-0.5 leading-tight drop-shadow-[0_2px_0_rgba(10,14,62,0.85)]">
               {level.name}
             </h2>
-            <p className="text-xs font-semibold text-[#6A5E4E] mt-1">{level.mechanicNote}</p>
+            <p className="text-[11px] font-bold text-[#74E6FF] mt-0.5">{level.mechanicNote}</p>
           </div>
 
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label="Cancel launch"
-            className="paper-btn-cream w-9 h-9 rounded-full flex items-center justify-center shrink-0"
-          >
-            <X className="w-4 h-4 text-[#27324F]" />
-          </button>
-        </div>
+          <div className="min-h-0 flex-1 overflow-y-auto mt-3 flex flex-col gap-2.5 pr-0.5">
+            {/* 1. CHOOSE SATELLITE */}
+            <div>
+              <div className="flex items-center justify-between mb-1.5">
+                <span className="font-display font-extrabold text-[11px] uppercase tracking-wider text-[#FFD426]">
+                  Choose Satellite
+                </span>
+                {ownedDefs.length < SATELLITES.length && (
+                  <button
+                    type="button"
+                    onClick={onOpenSpaceStation}
+                    className="text-[11px] font-display font-bold text-[#6CE5FF] hover:text-white flex items-center gap-1 transition-colors"
+                  >
+                    <Radio className="w-3 h-3" /> Get More
+                  </button>
+                )}
+              </div>
 
-        <div className="min-h-0 flex-1 overflow-y-auto mt-4 flex flex-col gap-4 pr-0.5">
-          {/* 1. Satellite Selector */}
-          <div>
-            <div className="flex items-center justify-between mb-2">
-              <span className="font-display font-bold text-xs uppercase tracking-wider text-[#5E5447]">
-                Choose Satellite
-              </span>
-              {ownedDefs.length < SATELLITES.length && (
+              <div className="grid grid-cols-2 gap-2">
+                {ownedDefs.map((sat) => {
+                  const isSelected = selectedSatellite === sat.id;
+                  return (
+                    <button
+                      key={sat.id}
+                      type="button"
+                      onClick={() => onSelectSatellite(sat.id)}
+                      className={`relative rounded-xl p-2 text-left flex items-center gap-2 transition-all focus-visible:outline-2 focus-visible:outline-[#3DF2FF] ${
+                        isSelected
+                          ? 'bg-[#C94A14] border-2 border-[#FFC43B]'
+                          : 'cosmic-glass-card hover:border-[#6CE5FF]'
+                      }`}
+                    >
+                      <SatelliteIllustration id={sat.id} className="w-9 h-9 shrink-0" />
+                      <div className="min-w-0">
+                        <div className="font-display font-bold text-xs text-white truncate">
+                          {sat.name}
+                        </div>
+                        <div
+                          className={`text-[9px] font-semibold truncate ${
+                            isSelected ? 'text-[#FFE2B5]' : 'text-[#A8C8F5]'
+                          }`}
+                        >
+                          {sat.tagline}
+                        </div>
+                      </div>
+                      {isSelected && (
+                        <span className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-[#FF661A] border-2 border-[#FFE994] text-white flex items-center justify-center shadow-sm">
+                          <Check className="w-3 h-3 stroke-[3]" />
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Selected Satellite Description Banner */}
+              <p className="text-[10px] sm:text-[11px] font-semibold text-[#D6EAFF] mt-2 bg-[#1E3686]/85 border border-[#5B9BFF]/50 rounded-xl px-3 py-1.5 leading-snug">
+                <strong className="text-white">{activeSat.name}:</strong> {activeSat.description}
+              </p>
+            </div>
+
+            {/* 2. ARM SHIELD POWER-UP PANEL */}
+            <div className="cosmic-glass-card rounded-2xl p-2.5 flex items-center justify-between gap-2.5">
+              <div className="flex items-center gap-2.5 min-w-0">
+                <div className="w-10 h-10 rounded-xl bg-[#0D164D] border border-[#3E64C8]/65 flex items-center justify-center shrink-0 p-1">
+                  <PaperShieldIcon className="w-7 h-7" />
+                </div>
+                <div className="min-w-0">
+                  <div className="flex items-center gap-1.5">
+                    <span className="font-display font-bold text-xs sm:text-sm text-white">
+                      Arm Shield
+                    </span>
+                    <span className="font-mono-num text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#7EC4FF] text-[#09205E]">
+                      {shieldsOwned} left
+                    </span>
+                  </div>
+                  <p className="text-[10px] font-semibold text-[#BDD7FA] leading-snug mt-0.5">
+                    {canUseShield
+                      ? effectiveShield
+                        ? 'Active! Uses 1 shield — immune to all obstacles.'
+                        : 'Protects from every obstacle this run (-1 shield).'
+                      : 'No shields owned. Buy at Space Station (10 Rockets).'}
+                  </p>
+                </div>
+              </div>
+
+              {canUseShield ? (
+                <button
+                  type="button"
+                  role="switch"
+                  aria-checked={effectiveShield}
+                  aria-label="Toggle orbit shield for this level"
+                  onClick={() => setUseShield((v) => !v)}
+                  className={`shrink-0 w-12 h-7 rounded-full p-1 transition-all flex items-center border-2 focus-visible:outline-2 focus-visible:outline-[#3DF2FF] ${
+                    effectiveShield
+                      ? 'bg-[#1668E8] border-[#3DF2FF] justify-end'
+                      : 'bg-[#121952] border-[#4A68C8] justify-start'
+                  }`}
+                >
+                  <span
+                    className={`w-4 h-4 rounded-full flex items-center justify-center transition-all ${
+                      effectiveShield ? 'bg-[#64F4FF]' : 'bg-[#5B75BA]'
+                    }`}
+                  >
+                    {effectiveShield && <Shield className="w-2.5 h-2.5 text-[#09205E]" />}
+                  </span>
+                </button>
+              ) : (
                 <button
                   type="button"
                   onClick={onOpenSpaceStation}
-                  className="text-[11px] font-display font-bold text-[#4D78A8] hover:underline flex items-center gap-1"
+                  className="glossy-btn-gold shrink-0 h-8 px-3 rounded-xl font-display font-extrabold text-[11px] whitespace-nowrap"
                 >
-                  <Radio className="w-3 h-3" /> Get More
+                  Buy
                 </button>
               )}
             </div>
-
-            <div className="grid grid-cols-2 gap-2">
-              {ownedDefs.map((sat) => {
-                const isSelected = selectedSatellite === sat.id;
-                return (
-                  <button
-                    key={sat.id}
-                    type="button"
-                    onClick={() => onSelectSatellite(sat.id)}
-                    className={`relative rounded-2xl border-2 p-2.5 text-left flex items-center gap-2.5 transition-all focus-visible:outline-2 focus-visible:outline-[#27324F] ${
-                      isSelected
-                        ? 'bg-[#FFF3CC] border-[#C75C3B] shadow-[0_3px_0_#C75C3B]'
-                        : 'bg-[#FCF8EE] border-[#D4C5AA] hover:border-[#4D78A8]'
-                    }`}
-                  >
-                    <SatelliteIllustration id={sat.id} className="w-10 h-10 shrink-0" />
-                    <div className="min-w-0">
-                      <div className="font-display font-bold text-xs text-[#27324F] truncate">
-                        {sat.name}
-                      </div>
-                      <div className="text-[10px] font-semibold text-[#6A5E4E] truncate">
-                        {sat.tagline}
-                      </div>
-                    </div>
-                    {isSelected && (
-                      <span className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-[#C75C3B] text-[#FAF3E6] flex items-center justify-center">
-                        <Check className="w-3 h-3 stroke-[3]" />
-                      </span>
-                    )}
-                  </button>
-                );
-              })}
-            </div>
-
-            <p className="text-[11px] font-semibold text-[#5E5447] mt-2 bg-[#EFE6D4] rounded-xl px-3 py-1.5">
-              <strong className="text-[#27324F]">{activeSat.name}:</strong> {activeSat.description}
-            </p>
           </div>
 
-          {/* 2. Shield Power-Up Toggle (Deducts 1 Shield on Launch) */}
-          <div className="rounded-2xl bg-[#FCF8EE] border-2 border-[#D4C5AA] p-3.5 flex items-center justify-between gap-3">
-            <div className="flex items-center gap-3 min-w-0">
-              <div className="w-11 h-11 rounded-2xl bg-[#232942] flex items-center justify-center shrink-0">
-                <PaperShieldIcon className="w-7 h-7" />
-              </div>
-              <div className="min-w-0">
-                <div className="flex items-center gap-1.5">
-                  <span className="font-display font-bold text-sm text-[#27324F]">
-                    Arm Shield
-                  </span>
-                  <span className="font-mono-num text-[11px] font-bold px-2 py-0.5 rounded-full bg-[#DCEAF5] text-[#2B5982]">
-                    {shieldsOwned} left
-                  </span>
-                </div>
-                <p className="text-[11px] font-semibold text-[#6A5E4E] leading-snug mt-0.5">
-                  {canUseShield
-                    ? effectiveShield
-                      ? 'Active! Uses 1 shield — immune to all obstacles.'
-                      : 'Protects from every obstacle this run (-1 shield).'
-                    : 'No shields owned. Buy at Space Station (10 Rockets).'}
-                </p>
-              </div>
-            </div>
-
-            {canUseShield ? (
-              <button
-                type="button"
-                role="switch"
-                aria-checked={effectiveShield}
-                aria-label="Toggle orbit shield for this level"
-                onClick={() => setUseShield((v) => !v)}
-                className={`shrink-0 w-13 h-8 rounded-full p-1 transition-colors flex items-center border-2 border-[#27324F] focus-visible:outline-2 focus-visible:outline-[#27324F] ${
-                  effectiveShield ? 'bg-[#4D78A8] justify-end' : 'bg-[#D8CCB7] justify-start'
-                }`}
-              >
-                <span className="w-5 h-5 rounded-full bg-[#FAF3E6] flex items-center justify-center shadow-sm">
-                  {effectiveShield && <Shield className="w-3 h-3 text-[#4D78A8]" />}
-                </span>
-              </button>
-            ) : (
-              <button
-                type="button"
-                onClick={onOpenSpaceStation}
-                className="paper-btn-gold shrink-0 h-9 px-3 rounded-xl font-display font-bold text-xs whitespace-nowrap"
-              >
-                Buy
-              </button>
-            )}
-          </div>
+          {/* LAUNCH ORBIT CTA */}
+          <button
+            type="button"
+            onClick={() => onLaunch(effectiveShield)}
+            className="glossy-btn-coral shrink-0 mt-3 w-full h-11 rounded-full font-display font-extrabold text-base tracking-wide flex items-center justify-center gap-2 transition-all focus-visible:outline-2 focus-visible:outline-[#3DF2FF]"
+          >
+            <span>{effectiveShield ? 'LAUNCH WITH SHIELD (-1)' : 'LAUNCH ORBIT'}</span>
+            <Play className="w-4 h-4 fill-current" />
+          </button>
         </div>
-
-        {/* Launch CTA */}
-        <button
-          type="button"
-          onClick={() => onLaunch(effectiveShield)}
-          className="paper-btn-terracotta relative shrink-0 mt-5 w-full h-13 rounded-2xl font-display font-bold text-lg tracking-wide flex items-center justify-center gap-2 transition-all focus-visible:outline-2 focus-visible:outline-[#27324F]"
-        >
-          <span
-            aria-hidden="true"
-            className="absolute inset-1.5 rounded-xl border-[1.5px] border-dashed border-[#FAF3E6]/60 pointer-events-none"
-          />
-          <Play className="w-5 h-5 relative z-10 fill-current" />
-          <span className="relative z-10">
-            {effectiveShield ? 'LAUNCH WITH SHIELD (-1)' : 'LAUNCH ORBIT'}
-          </span>
-        </button>
       </div>
     </div>
   );

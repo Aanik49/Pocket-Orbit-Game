@@ -180,12 +180,12 @@ export class OrbitEngine {
   private elapsedClock = 0;
   private pendingModalTimer: number | null = null;
 
-  // Pre-allocated pools, starfield & cached paper patterns
+  // Pre-allocated pools, starfield & cosmic space backdrop sprite
   private bgStars: BgStar[] = [];
   private particles: Particle[] = [];
   private shockwaves: Shockwave[] = [];
-  private creamPaperPattern: CanvasPattern | null = null;
-  private navyPaperPattern: CanvasPattern | null = null;
+  private cosmicBgImage: HTMLImageElement | null = null;
+  private cosmicBgLoaded = false;
 
   // RAF lifecycle
   private rafId: number | null = null;
@@ -209,7 +209,7 @@ export class OrbitEngine {
 
     this.initPools();
     this.initStarfield();
-    this.initPaperPatterns();
+    this.initCosmicBackdrop();
     this.resize();
     this.loadLevel(1, 'TITLE');
   }
@@ -240,62 +240,20 @@ export class OrbitEngine {
     }));
   }
 
-  private initPaperPatterns(): void {
-    if (typeof document === 'undefined') return;
-
-    const creamTile = document.createElement('canvas');
-    creamTile.width = 160;
-    creamTile.height = 160;
-    const cctx = creamTile.getContext('2d');
-    if (cctx) {
-      cctx.fillStyle = '#F5EFE2';
-      cctx.fillRect(0, 0, 160, 160);
-      for (let i = 0; i < 110; i++) {
-        const s1 = Math.sin(i * 73.1 + 11.7) * 43758.5453;
-        const s2 = Math.sin(i * 39.7 + 53.3) * 43758.5453;
-        const s3 = Math.sin(i * 19.3 + 7.1) * 43758.5453;
-        const x = (s1 - Math.floor(s1)) * 160;
-        const y = (s2 - Math.floor(s2)) * 160;
-        const sz = s3 - Math.floor(s3);
-        cctx.fillStyle =
-          i % 4 === 0
-            ? 'rgba(130, 102, 72, 0.24)'
-            : i % 2 === 0
-              ? 'rgba(176, 148, 112, 0.2)'
-              : 'rgba(204, 178, 142, 0.18)';
-        cctx.beginPath();
-        cctx.arc(x, y, 0.55 + sz * 1.05, 0, TAU);
-        cctx.fill();
-      }
-      this.creamPaperPattern = this.ctx.createPattern(creamTile, 'repeat');
-    }
-
-    const navyTile = document.createElement('canvas');
-    navyTile.width = 160;
-    navyTile.height = 160;
-    const nctx = navyTile.getContext('2d');
-    if (nctx) {
-      nctx.clearRect(0, 0, 160, 160);
-      for (let i = 0; i < 85; i++) {
-        const s1 = Math.sin(i * 61.3 + 29.1) * 43758.5453;
-        const s2 = Math.sin(i * 43.9 + 17.5) * 43758.5453;
-        const s3 = Math.sin(i * 27.1 + 3.9) * 43758.5453;
-        const x = (s1 - Math.floor(s1)) * 160;
-        const y = (s2 - Math.floor(s2)) * 160;
-        const sz = s3 - Math.floor(s3);
-        nctx.fillStyle = i % 2 === 0 ? 'rgba(255, 248, 232, 0.032)' : 'rgba(9, 12, 24, 0.085)';
-        nctx.beginPath();
-        nctx.arc(x, y, 0.5 + sz * 0.85, 0, TAU);
-        nctx.fill();
-      }
-      this.navyPaperPattern = this.ctx.createPattern(navyTile, 'repeat');
-    }
+  private initCosmicBackdrop(): void {
+    if (typeof Image === 'undefined') return;
+    const img = new Image();
+    img.onload = () => {
+      this.cosmicBgLoaded = true;
+    };
+    img.src = './assets/cosmic/lobby-bg.png';
+    this.cosmicBgImage = img;
   }
 
   private initStarfield(): void {
     this.bgStars = [];
-    const starTints = ['#F3C24F', '#E6B85C', '#F8E3A3', '#D4A553'];
-    for (let i = 0; i < 34; i++) {
+    const starTints = ['#FFF6A8', '#7CEBFF', '#FFFFFF', '#FFD84D', '#B6E6FF'];
+    for (let i = 0; i < 48; i++) {
       const s1 = Math.sin(i * 91.7 + 13.3) * 43758.5453;
       const s2 = Math.sin(i * 47.3 + 71.1) * 43758.5453;
       const s3 = Math.sin(i * 23.9 + 5.7) * 43758.5453;
@@ -305,10 +263,10 @@ export class OrbitEngine {
       this.bgStars.push({
         nx,
         ny,
-        r: i < 12 ? 3.2 + sz * 3.2 : 0.75 + sz * 1.05,
-        alpha: i < 12 ? 0.55 + sz * 0.3 : 0.18 + sz * 0.24,
+        r: i < 14 ? 3.4 + sz * 3.6 : 1.0 + sz * 1.6,
+        alpha: i < 14 ? 0.65 + sz * 0.32 : 0.35 + sz * 0.45,
         phase: sz * TAU,
-        isStarShape: i < 12,
+        isStarShape: i < 14,
         tint: starTints[i % starTints.length],
       });
     }
@@ -862,7 +820,7 @@ export class OrbitEngine {
   }
 
   // =========================================================================
-  // PAPER-CRAFT DIORAMA RENDERER
+  // COSMIC GLOSSY SCI-FI ARCADE RENDERER
   // =========================================================================
 
   private render(): void {
@@ -883,77 +841,118 @@ export class OrbitEngine {
 
     const palette = this.level.planetPalette;
 
-    // 1. Matte midnight construction-paper backdrop
+    // 1. Deep royal-blue cosmic nebula base gradient
     const bgGrad = ctx.createRadialGradient(
       this.centerX,
       this.centerY,
-      this.planetRadius * 0.4,
+      this.planetRadius * 0.5,
       this.centerX,
       this.centerY,
-      Math.max(this.width, this.height) * 0.78
+      Math.max(this.width, this.height) * 0.82
     );
-    bgGrad.addColorStop(0, palette.bgInner);
-    bgGrad.addColorStop(0.6, '#20263F');
-    bgGrad.addColorStop(1, '#191E33');
+    bgGrad.addColorStop(0, '#1A34A8');
+    bgGrad.addColorStop(0.55, '#0E1D73');
+    bgGrad.addColorStop(1, '#070D3E');
     ctx.fillStyle = bgGrad;
     ctx.fillRect(0, 0, this.width, this.height);
 
-    if (!this.lowPower && this.navyPaperPattern) {
-      ctx.fillStyle = this.navyPaperPattern;
+    // Composite the cosmic ringed-planets & space-station skyline softly behind the orbital arena
+    if (this.cosmicBgLoaded && this.cosmicBgImage) {
+      const img = this.cosmicBgImage;
+      const iw = img.naturalWidth || 504;
+      const ih = img.naturalHeight || 958;
+      const coverScale = Math.max(this.width / iw, this.height / ih);
+      const dw = iw * coverScale;
+      const dh = ih * coverScale;
+      const dx = (this.width - dw) * 0.5;
+      const dy = (this.height - dh) * 0.5;
+
+      ctx.save();
+      ctx.globalAlpha = this.lowPower ? 0.42 : 0.62;
+      ctx.drawImage(img, dx, dy, dw, dh);
+      ctx.restore();
+
+      // Luminous royal-indigo arena focus veil so central planet & orbits pop cleanly
+      const arenaVeil = ctx.createRadialGradient(
+        this.centerX,
+        this.centerY,
+        this.planetRadius * 0.6,
+        this.centerX,
+        this.centerY,
+        this.outerRadius * 1.9
+      );
+      arenaVeil.addColorStop(0, 'rgba(13, 28, 118, 0.72)');
+      arenaVeil.addColorStop(0.65, 'rgba(10, 20, 92, 0.58)');
+      arenaVeil.addColorStop(1, 'rgba(7, 13, 62, 0.25)');
+      ctx.fillStyle = arenaVeil;
       ctx.fillRect(0, 0, this.width, this.height);
+
+      // Subtle bottom dark readability scrim for HUD caption text
+      const bottomScrim = ctx.createLinearGradient(0, this.height * 0.78, 0, this.height);
+      bottomScrim.addColorStop(0, 'rgba(7, 11, 46, 0)');
+      bottomScrim.addColorStop(1, 'rgba(7, 11, 46, 0.68)');
+      ctx.fillStyle = bottomScrim;
+      ctx.fillRect(0, this.height * 0.78, this.width, this.height * 0.22);
     }
 
-    // 2. Calm gold-foil background stars & fine dust
-    const breatheTime = this.reducedMotion ? 0 : this.elapsedClock * 0.5;
+    // 2. Twinkling cosmic stars & luminous bokeh motes
+    const twinkleTime = this.reducedMotion ? 0 : this.elapsedClock * 1.5;
     for (let i = 0; i < this.bgStars.length; i++) {
       const st = this.bgStars[i];
       const sx = st.nx * this.width;
       const sy = st.ny * this.height;
-      if (
-        st.isStarShape &&
-        Math.hypot(sx - this.centerX, sy - this.centerY) < this.outerRadius * 1.15
-      ) {
+      const distCenter = Math.hypot(sx - this.centerX, sy - this.centerY);
+      if (st.isStarShape && distCenter < this.outerRadius * 1.12) {
         continue;
       }
-      const mod = this.reducedMotion ? 1 : 0.88 + 0.12 * Math.sin(breatheTime + st.phase);
+      const mod = this.reducedMotion ? 1 : 0.72 + 0.28 * Math.sin(twinkleTime + st.phase);
       ctx.save();
       ctx.globalAlpha = st.alpha * mod;
       if (st.isStarShape) {
-        this.drawFivePointPaperStar(ctx, sx, sy, st.r, st.tint, '#FFF4C2', '#B58428', false);
+        if (i % 2 === 0) {
+          this.drawFourPointSparkle(ctx, sx, sy, st.r * 1.35, st.tint);
+        } else {
+          this.drawGlowingStarShape(ctx, sx, sy, st.r * 0.95, '#FFF5A8', '#FFBC1F', false);
+        }
       } else {
-        ctx.fillStyle = '#EAE0C8';
+        // Soft luminous space dust dot
+        const dotGrad = ctx.createRadialGradient(sx, sy, 0, sx, sy, st.r * 2.4);
+        dotGrad.addColorStop(0, '#FFFFFF');
+        dotGrad.addColorStop(0.45, st.tint);
+        dotGrad.addColorStop(1, 'rgba(124, 235, 255, 0)');
+        ctx.fillStyle = dotGrad;
         ctx.beginPath();
-        ctx.arc(sx, sy, st.r, 0, TAU);
+        ctx.arc(sx, sy, st.r * 2.4, 0, TAU);
         ctx.fill();
       }
       ctx.restore();
     }
 
-    // 3. Moons & Stitched Gravity Wells
+    // 3. Moons & Glowing Cosmic Gravity Wells
     this.drawMoons();
 
-    // 4. Stitched Parchment Concentric Tracks
-    this.drawOrbitTrack(this.innerRadius, this.satTargetOrbit === 0, '#F3C24F');
-    this.drawOrbitTrack(this.outerRadius, this.satTargetOrbit === 1, '#E8D5B5');
+    // 4. Glowing Golden Active Orbit & Luminous Silver-Blue Inactive Orbit
+    this.drawOrbitTrack(this.innerRadius, this.satTargetOrbit === 0);
+    this.drawOrbitTrack(this.outerRadius, this.satTargetOrbit === 1);
 
-    // 5. Layered Wavy Hand-Cut Construction-Paper Planet
+    // 5. Vibrant Glossy 3D Striped & Cratered Central Planet with Cyan Atmospheric Halo
     this.drawPlanet(palette);
 
-    // 6. Concentric Layered Cutout Goal Portal
+    // 6. Glowing Cosmic Warp Portal
     this.drawPortal();
 
-    // 7. Gold-Foil Origami Collectible Stars
+    // 7. Radiant Glossy 3D Golden Collectible Stars
     for (let i = 0; i < this.stars.length; i++) {
       const s = this.stars[i];
       if (s.collected) continue;
       const r = s.orbit === 0 ? this.innerRadius : this.outerRadius;
       const sx = this.centerX + Math.cos(s.angle) * r;
       const sy = this.centerY + Math.sin(s.angle) * r;
-      const bobScale = this.reducedMotion ? 1 : 1 + Math.sin(s.bobPhase) * 0.07;
+      const bobScale = this.reducedMotion ? 1 : 1 + Math.sin(s.bobPhase) * 0.08;
       this.drawStar(sx, sy, bobScale);
     }
 
-    // 8. Crumpled Paper Asteroids & Paper-Cut Comets
+    // 8. Vivid Glowing Neon Hazards (Green Energy Saber, Red-Orange Asteroid, Crystal Star Mine)
     const sizeScale = this.outerRadius / 148;
     for (let i = 0; i < this.hazards.length; i++) {
       const h = this.hazards[i];
@@ -963,25 +962,29 @@ export class OrbitEngine {
       this.drawHazard(hx, hy, h, sizeScale);
     }
 
-    // 9. Crimson Paper Ribbon Trail & Origami Paper Satellite
+    // 9. Roaring Rocket Flame Plume & Glossy 3D Space Craft
     if (this.screen !== 'GAMEOVER' || this.hitstopTimer > 0) {
       this.drawTrail();
       this.drawSatellite();
     }
 
-    // 10. Pooled Stitched Shockwaves & Paper Confetti Particles
+    // 10. Pooled Luminous Shockwaves & Starburst Sparks
     for (let i = 0; i < this.shockwaves.length; i++) {
       const sw = this.shockwaves[i];
       if (!sw.active) continue;
       ctx.save();
       ctx.strokeStyle = sw.color;
-      ctx.globalAlpha = Math.max(0, sw.alpha);
-      ctx.lineWidth = 2;
-      ctx.setLineDash([5, 5]);
+      ctx.globalAlpha = Math.max(0, sw.alpha * 0.4);
+      ctx.lineWidth = 6;
       ctx.beginPath();
       ctx.arc(sw.x, sw.y, sw.radius, 0, TAU);
       ctx.stroke();
-      ctx.setLineDash([]);
+
+      ctx.globalAlpha = Math.max(0, sw.alpha);
+      ctx.lineWidth = 2.2;
+      ctx.beginPath();
+      ctx.arc(sw.x, sw.y, sw.radius, 0, TAU);
+      ctx.stroke();
       ctx.restore();
     }
 
@@ -991,14 +994,20 @@ export class OrbitEngine {
       ctx.save();
       ctx.translate(p.x, p.y);
       ctx.rotate(p.rot);
-      ctx.fillStyle = p.color;
       ctx.globalAlpha = Math.max(0, p.life);
-      ctx.fillRect(-p.size * 0.75, -p.size * 0.55, p.size * 1.5, p.size * 1.1);
+      ctx.fillStyle = p.color;
+      ctx.beginPath();
+      ctx.arc(0, 0, p.size * 0.85, 0, TAU);
+      ctx.fill();
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.72)';
+      ctx.beginPath();
+      ctx.arc(-p.size * 0.2, -p.size * 0.2, p.size * 0.35, 0, TAU);
+      ctx.fill();
       ctx.restore();
     }
 
     if (this.impactFlash > 0.01 && !this.reducedMotion) {
-      ctx.fillStyle = `rgba(199, 92, 59, ${(this.impactFlash * 0.16).toFixed(3)})`;
+      ctx.fillStyle = `rgba(255, 92, 66, ${(this.impactFlash * 0.24).toFixed(3)})`;
       ctx.fillRect(0, 0, this.width, this.height);
     }
 
@@ -1006,246 +1015,39 @@ export class OrbitEngine {
   }
 
   /**
-   * Warm speckled handmade cream paper backdrop matching the exact Pocket Orbit Lobby mockup:
-   * top-right double twine arc, left/right floating felt clouds with ochre shadows,
-   * bottom-left peeking ringed ochre planet, bottom-right terracotta orbital loop + cloud,
-   * and scattered warm ochre / burnt-terracotta paper stars.
+   * LobbyScreen renders its own full-bleed cosmic launchpad background image,
+   * so keep the underlying canvas lightweight while on TITLE.
    */
   private renderLobbyBackdrop(ctx: CanvasRenderingContext2D): void {
-    ctx.fillStyle = '#F5EFE2';
+    ctx.fillStyle = '#080C38';
     ctx.fillRect(0, 0, this.width, this.height);
-    if (!this.lowPower && this.creamPaperPattern) {
-      ctx.fillStyle = this.creamPaperPattern;
-      ctx.fillRect(0, 0, this.width, this.height);
-    }
-
-    // Soft warm paper edge shading
-    const edgeGrad = ctx.createRadialGradient(
-      this.centerX,
-      this.height * 0.48,
-      Math.min(this.width, this.height) * 0.28,
-      this.centerX,
-      this.height * 0.48,
-      Math.max(this.width, this.height) * 0.8
-    );
-    edgeGrad.addColorStop(0, 'rgba(255, 250, 240, 0)');
-    edgeGrad.addColorStop(1, 'rgba(196, 172, 136, 0.18)');
-    ctx.fillStyle = edgeGrad;
-    ctx.fillRect(0, 0, this.width, this.height);
-
-    const scale = Math.min(1.18, Math.max(0.72, Math.min(this.width, this.height) / 520));
-    const bob = this.reducedMotion ? 0 : Math.sin(this.elapsedClock * 0.85) * 3 * scale;
-
-    ctx.save();
-
-    // 1. Top-right double orbital twine arc sweeping behind the Sound button
-    ctx.strokeStyle = 'rgba(130, 108, 86, 0.5)';
-    ctx.lineWidth = 1.6;
-    ctx.beginPath();
-    ctx.arc(this.width * 1.03, -this.height * 0.04, 152 * scale, Math.PI * 0.48, Math.PI * 1.02);
-    ctx.stroke();
-
-    ctx.strokeStyle = 'rgba(130, 108, 86, 0.42)';
-    ctx.lineWidth = 1.4;
-    ctx.setLineDash([7, 6]);
-    ctx.beginPath();
-    ctx.arc(this.width * 1.03, -this.height * 0.04, 128 * scale, Math.PI * 0.48, Math.PI * 1.02);
-    ctx.stroke();
-    ctx.setLineDash([]);
-
-    // 2. Left-edge small floating felt cloud (upper-left)
-    this.drawStitchedCloud(
-      ctx,
-      this.width * 0.065,
-      this.height * 0.175 + bob * 0.45,
-      30 * scale,
-      '#FAF8F4',
-      '#D6D2CA'
-    );
-
-    // 3. Left-edge larger cloud with warm ochre shadow ribbon beneath it
-    ctx.save();
-    ctx.fillStyle = '#D99E4E';
-    ctx.beginPath();
-    ctx.ellipse(
-      this.width * 0.01,
-      this.height * 0.295 + bob * 0.6,
-      54 * scale,
-      18 * scale,
-      -0.38,
-      0,
-      TAU
-    );
-    ctx.fill();
-    ctx.restore();
-    this.drawStitchedCloud(
-      ctx,
-      this.width * 0.025,
-      this.height * 0.275 + bob * 0.6,
-      50 * scale,
-      '#FAF8F4',
-      '#D6D2CA'
-    );
-
-    // 4. Right-edge floating felt cloud with warm ochre shadow ribbon beneath it
-    ctx.save();
-    ctx.fillStyle = '#E0A656';
-    ctx.beginPath();
-    ctx.ellipse(
-      this.width * 0.96,
-      this.height * 0.282 - bob * 0.5,
-      58 * scale,
-      16 * scale,
-      0.16,
-      0,
-      TAU
-    );
-    ctx.fill();
-    ctx.restore();
-    this.drawStitchedCloud(
-      ctx,
-      this.width * 0.965,
-      this.height * 0.262 - bob * 0.5,
-      54 * scale,
-      '#FAF8F4',
-      '#D6D2CA'
-    );
-
-    // 5. Bottom-left peeking ringed ochre planet with tilted double elliptical rings
-    const blX = this.width * 0.005;
-    const blY = this.height * 0.79;
-    const blR = 54 * scale;
-
-    ctx.save();
-    ctx.translate(blX, blY);
-    ctx.rotate(0.46);
-    // Double orbital rings
-    ctx.strokeStyle = 'rgba(130, 108, 86, 0.55)';
-    ctx.lineWidth = 1.6;
-    ctx.beginPath();
-    ctx.ellipse(0, 0, blR * 2.15, blR * 0.95, 0, 0, TAU);
-    ctx.stroke();
-
-    ctx.strokeStyle = 'rgba(130, 108, 86, 0.36)';
-    ctx.lineWidth = 1.3;
-    ctx.beginPath();
-    ctx.ellipse(0, 0, blR * 1.72, blR * 0.74, 0, 0, TAU);
-    ctx.stroke();
-
-    // Ochre planet shadow + layered golden cardstock body
-    ctx.fillStyle = 'rgba(39, 50, 79, 0.14)';
-    ctx.beginPath();
-    ctx.arc(3, 5, blR, 0, TAU);
-    ctx.fill();
-
-    ctx.fillStyle = '#D49A4A';
-    ctx.beginPath();
-    ctx.arc(0, 4 * scale, blR, 0, TAU);
-    ctx.fill();
-
-    ctx.fillStyle = '#E5B25D';
-    ctx.beginPath();
-    ctx.arc(-2 * scale, -2 * scale, blR * 0.96, 0, TAU);
-    ctx.fill();
-    ctx.restore();
-
-    // 6. Bottom-right peeking terracotta orbital ribbon + overlapping white felt cloud
-    ctx.save();
-    ctx.translate(this.width * 1.03, this.height * 0.805);
-    ctx.rotate(-0.26);
-    // Shadow
-    ctx.strokeStyle = 'rgba(39, 50, 79, 0.16)';
-    ctx.lineWidth = 17 * scale;
-    ctx.beginPath();
-    ctx.ellipse(2, 6, 98 * scale, 48 * scale, 0, 0, TAU);
-    ctx.stroke();
-
-    // Terracotta outer orbital band
-    ctx.strokeStyle = '#C75C3B';
-    ctx.lineWidth = 15 * scale;
-    ctx.beginPath();
-    ctx.ellipse(0, 0, 98 * scale, 48 * scale, 0, 0, TAU);
-    ctx.stroke();
-
-    // Warm sunlit inner rim highlight
-    ctx.strokeStyle = '#DF7B52';
-    ctx.lineWidth = 5 * scale;
-    ctx.beginPath();
-    ctx.ellipse(0, -1, 95 * scale, 45 * scale, 0, Math.PI * 0.7, Math.PI * 1.45);
-    ctx.stroke();
-    ctx.restore();
-
-    this.drawStitchedCloud(
-      ctx,
-      this.width * 0.895,
-      this.height * 0.802 + bob * 0.4,
-      42 * scale,
-      '#FAF8F4',
-      '#D6D2CA'
-    );
-
-    // 7. Scattered warm ochre & burnt-terracotta 5-point paper stars in the exact mockup spots
-    const decoStars = [
-      { x: this.width * 0.915, y: this.height * 0.16, r: 9.5 * scale, c: '#C75C3B' },
-      { x: this.width * 0.135, y: this.height * 0.705, r: 9.5 * scale, c: '#C89E68' },
-      { x: this.width * 0.185, y: this.height * 0.85, r: 7.2 * scale, c: '#F3C24F' },
-      { x: this.width * 0.185, y: this.height * 0.94, r: 10.5 * scale, c: '#E5AE52' },
-      { x: this.width * 0.84, y: this.height * 0.888, r: 8.5 * scale, c: '#C75C3B' },
-    ];
-    for (let i = 0; i < decoStars.length; i++) {
-      const ds = decoStars[i];
-      this.drawFivePointPaperStar(
-        ctx,
-        ds.x,
-        ds.y,
-        ds.r,
-        ds.c,
-        '#FFF5D6',
-        'rgba(39,50,79,0.2)',
-        true
-      );
-    }
-
-    ctx.restore();
   }
 
-  private drawStitchedCloud(
+  private drawFourPointSparkle(
     ctx: CanvasRenderingContext2D,
     x: number,
     y: number,
-    size: number,
-    fillHex: string,
-    stitchHex: string
+    r: number,
+    color: string
   ): void {
-    const buildCloudPath = (ox: number, oy: number, s: number) => {
-      ctx.beginPath();
-      ctx.moveTo(ox - s * 0.82, oy + s * 0.24);
-      ctx.quadraticCurveTo(ox - s * 1.02, oy + s * 0.24, ox - s * 0.96, oy + s * 0.02);
-      ctx.quadraticCurveTo(ox - s * 0.9, oy - s * 0.22, ox - s * 0.58, oy - s * 0.2);
-      ctx.quadraticCurveTo(ox - s * 0.44, oy - s * 0.62, ox - s * 0.02, oy - s * 0.58);
-      ctx.quadraticCurveTo(ox + s * 0.38, oy - s * 0.54, ox + s * 0.46, oy - s * 0.22);
-      ctx.quadraticCurveTo(ox + s * 0.92, oy - s * 0.24, ox + s * 0.94, oy + s * 0.04);
-      ctx.quadraticCurveTo(ox + s * 0.96, oy + s * 0.24, ox + s * 0.72, oy + s * 0.24);
-      ctx.closePath();
-    };
-
-    ctx.save();
-    buildCloudPath(x + 2, y + 4, size);
-    ctx.fillStyle = 'rgba(39, 50, 79, 0.1)';
+    const glow = ctx.createRadialGradient(x, y, 0, x, y, r * 1.45);
+    glow.addColorStop(0, 'rgba(255, 255, 255, 0.8)');
+    glow.addColorStop(0.45, color);
+    glow.addColorStop(1, 'rgba(124, 235, 255, 0)');
+    ctx.fillStyle = glow;
+    ctx.beginPath();
+    ctx.arc(x, y, r * 1.45, 0, TAU);
     ctx.fill();
 
-    buildCloudPath(x, y, size);
-    ctx.fillStyle = fillHex;
+    ctx.fillStyle = '#FFFFFF';
+    ctx.beginPath();
+    ctx.moveTo(x, y - r);
+    ctx.quadraticCurveTo(x, y, x + r, y);
+    ctx.quadraticCurveTo(x, y, x, y + r);
+    ctx.quadraticCurveTo(x, y, x - r, y);
+    ctx.quadraticCurveTo(x, y, x, y - r);
+    ctx.closePath();
     ctx.fill();
-
-    buildCloudPath(x, y, size * 0.88);
-    ctx.strokeStyle = stitchHex;
-    ctx.globalAlpha = 0.55;
-    ctx.lineWidth = 1.2;
-    ctx.setLineDash([3.5, 3.5]);
-    ctx.stroke();
-    ctx.setLineDash([]);
-    ctx.restore();
   }
 
   private drawMoons(): void {
@@ -1265,47 +1067,49 @@ export class OrbitEngine {
 
       ctx.save();
 
-      ctx.strokeStyle = 'rgba(232, 222, 200, 0.08)';
+      // Subtle moon orbit guide
+      ctx.strokeStyle = 'rgba(148, 198, 255, 0.14)';
       ctx.lineWidth = 1;
       ctx.beginPath();
       ctx.arc(this.centerX, this.centerY, mRad, 0, TAU);
       ctx.stroke();
 
+      // Luminous gravity aura
       const wellGrad = ctx.createRadialGradient(mx, my, 4, mx, my, wellPx);
       if (isBoost) {
         wellGrad.addColorStop(
           0,
-          engaged ? 'rgba(206, 180, 232, 0.24)' : 'rgba(206, 180, 232, 0.13)'
+          engaged ? 'rgba(196, 120, 255, 0.38)' : 'rgba(176, 108, 255, 0.2)'
         );
-        wellGrad.addColorStop(1, 'rgba(206, 180, 232, 0)');
+        wellGrad.addColorStop(1, 'rgba(176, 108, 255, 0)');
       } else {
         wellGrad.addColorStop(
           0,
-          engaged ? 'rgba(158, 192, 218, 0.24)' : 'rgba(158, 192, 218, 0.13)'
+          engaged ? 'rgba(66, 226, 255, 0.36)' : 'rgba(66, 210, 255, 0.18)'
         );
-        wellGrad.addColorStop(1, 'rgba(158, 192, 218, 0)');
+        wellGrad.addColorStop(1, 'rgba(66, 210, 255, 0)');
       }
       ctx.fillStyle = wellGrad;
       ctx.beginPath();
       ctx.arc(mx, my, wellPx, 0, TAU);
       ctx.fill();
 
-      ctx.setLineDash([4, 5]);
+      ctx.setLineDash([5, 5]);
       ctx.strokeStyle = engaged
-        ? '#FAF3E6'
+        ? '#FFFFFF'
         : isBoost
-          ? 'rgba(234, 224, 212, 0.56)'
-          : 'rgba(218, 226, 235, 0.52)';
-      ctx.lineWidth = engaged ? 1.7 : 1.25;
+          ? 'rgba(218, 166, 255, 0.65)'
+          : 'rgba(116, 232, 255, 0.62)';
+      ctx.lineWidth = engaged ? 2 : 1.4;
       ctx.beginPath();
       ctx.arc(mx, my, wellPx, 0, TAU);
       ctx.stroke();
       ctx.setLineDash([]);
 
       if (engaged) {
-        ctx.strokeStyle = isBoost ? 'rgba(243, 194, 79, 0.78)' : 'rgba(158, 192, 218, 0.8)';
-        ctx.lineWidth = 1.6;
-        ctx.setLineDash([3, 4]);
+        ctx.strokeStyle = isBoost ? 'rgba(255, 220, 96, 0.9)' : 'rgba(92, 238, 255, 0.9)';
+        ctx.lineWidth = 2;
+        ctx.setLineDash([4, 4]);
         ctx.beginPath();
         ctx.moveTo(mx, my);
         ctx.lineTo(satX, satY);
@@ -1313,14 +1117,30 @@ export class OrbitEngine {
         ctx.setLineDash([]);
       }
 
-      const moonR = Math.max(9.5, this.outerRadius * 0.075);
+      const moonR = Math.max(10, this.outerRadius * 0.078);
 
-      ctx.fillStyle = 'rgba(8, 11, 24, 0.42)';
+      // Soft atmospheric moon halo
+      const halo = ctx.createRadialGradient(mx, my, moonR * 0.6, mx, my, moonR * 1.65);
+      halo.addColorStop(0, isBoost ? 'rgba(212, 138, 255, 0.5)' : 'rgba(104, 224, 255, 0.45)');
+      halo.addColorStop(1, 'rgba(104, 224, 255, 0)');
+      ctx.fillStyle = halo;
       ctx.beginPath();
-      ctx.arc(mx + 2.5, my + 4, moonR, 0, TAU);
+      ctx.arc(mx, my, moonR * 1.65, 0, TAU);
       ctx.fill();
 
-      ctx.fillStyle = m.color || '#BCBEC7';
+      // Glossy shaded moon sphere
+      const sphereGrad = ctx.createRadialGradient(
+        mx - moonR * 0.32,
+        my - moonR * 0.34,
+        moonR * 0.12,
+        mx,
+        my,
+        moonR
+      );
+      sphereGrad.addColorStop(0, '#F5F2FF');
+      sphereGrad.addColorStop(0.5, isBoost ? '#B584FF' : '#7BCFFF');
+      sphereGrad.addColorStop(1, isBoost ? '#52299C' : '#1E52A8');
+      ctx.fillStyle = sphereGrad;
       ctx.beginPath();
       ctx.arc(mx, my, moonR, 0, TAU);
       ctx.fill();
@@ -1329,153 +1149,235 @@ export class OrbitEngine {
       ctx.beginPath();
       ctx.arc(mx, my, moonR, 0, TAU);
       ctx.clip();
-
-      ctx.fillStyle = 'rgba(42, 48, 66, 0.22)';
+      ctx.fillStyle = 'rgba(20, 14, 58, 0.28)';
       ctx.beginPath();
-      ctx.arc(mx + moonR * 0.26, my + moonR * 0.26, moonR * 0.94, 0, TAU);
+      ctx.arc(mx - moonR * 0.3, my - moonR * 0.14, moonR * 0.25, 0, TAU);
+      ctx.arc(mx + moonR * 0.24, my + moonR * 0.26, moonR * 0.22, 0, TAU);
       ctx.fill();
-
-      ctx.fillStyle = 'rgba(72, 78, 96, 0.46)';
-      ctx.beginPath();
-      ctx.arc(mx - moonR * 0.34, my - moonR * 0.16, moonR * 0.26, 0, TAU);
-      ctx.fill();
-
-      ctx.beginPath();
-      ctx.arc(mx + moonR * 0.22, my + moonR * 0.28, moonR * 0.22, 0, TAU);
-      ctx.fill();
-
-      ctx.beginPath();
-      ctx.arc(mx + moonR * 0.26, my - moonR * 0.32, moonR * 0.13, 0, TAU);
-      ctx.fill();
-
       ctx.restore();
+
+      ctx.strokeStyle = 'rgba(220, 246, 255, 0.65)';
+      ctx.lineWidth = 1.1;
+      ctx.beginPath();
+      ctx.arc(mx, my, moonR, 0, TAU);
+      ctx.stroke();
+
       ctx.restore();
     }
   }
 
-  private drawOrbitTrack(radius: number, isActive: boolean, activeHex: string): void {
+  private drawOrbitTrack(radius: number, isActive: boolean): void {
     const ctx = this.ctx;
     ctx.save();
 
     if (isActive) {
-      ctx.strokeStyle = activeHex;
-      ctx.globalAlpha = 0.1;
-      ctx.lineWidth = 8;
+      // Multi-layered warm golden-orange cosmic ring glow (no shadowBlur!)
+      ctx.strokeStyle = 'rgba(255, 145, 0, 0.14)';
+      ctx.lineWidth = 15;
       ctx.beginPath();
       ctx.arc(this.centerX, this.centerY, radius, 0, TAU);
       ctx.stroke();
+
+      ctx.strokeStyle = 'rgba(255, 200, 48, 0.28)';
+      ctx.lineWidth = 7.5;
+      ctx.beginPath();
+      ctx.arc(this.centerX, this.centerY, radius, 0, TAU);
+      ctx.stroke();
+
+      // Radiant golden dashed core
+      ctx.strokeStyle = '#FFE45C';
+      ctx.lineWidth = 3.2;
+      ctx.lineCap = 'round';
+      ctx.setLineDash([7, 9]);
+      ctx.lineDashOffset = this.reducedMotion ? 0 : -this.planetRotation * 44;
+      ctx.beginPath();
+      ctx.arc(this.centerX, this.centerY, radius, 0, TAU);
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      // Floating golden stardust motes around active orbit (matching gameplay mockup)
+      if (!this.lowPower) {
+        const moteCount = 14;
+        for (let i = 0; i < moteCount; i++) {
+          const a = (i * TAU) / moteCount + this.elapsedClock * 0.25;
+          const radialOff = Math.sin(i * 4.3 + this.elapsedClock * 1.4) * 7.5;
+          const mx = this.centerX + Math.cos(a) * (radius + radialOff);
+          const my = this.centerY + Math.sin(a) * (radius + radialOff);
+          const pulse = 0.45 + 0.55 * Math.sin(this.elapsedClock * 3 + i * 1.7);
+          ctx.fillStyle = `rgba(255, 224, 102, ${(pulse * 0.78).toFixed(2)})`;
+          ctx.beginPath();
+          ctx.arc(mx, my, i % 3 === 0 ? 1.9 : 1.25, 0, TAU);
+          ctx.fill();
+        }
+      }
+    } else {
+      // Soft cool ice-blue aura + crisp silver-blue dashed line for inactive orbit
+      ctx.strokeStyle = 'rgba(130, 204, 255, 0.12)';
+      ctx.lineWidth = 6;
+      ctx.beginPath();
+      ctx.arc(this.centerX, this.centerY, radius, 0, TAU);
+      ctx.stroke();
+
+      ctx.strokeStyle = 'rgba(196, 226, 255, 0.56)';
+      ctx.lineWidth = 2;
+      ctx.lineCap = 'round';
+      ctx.setLineDash([7, 8]);
+      ctx.lineDashOffset = this.reducedMotion ? 0 : -this.planetRotation * 16;
+      ctx.beginPath();
+      ctx.arc(this.centerX, this.centerY, radius, 0, TAU);
+      ctx.stroke();
+      ctx.setLineDash([]);
     }
 
-    ctx.globalAlpha = isActive ? 0.88 : 0.44;
-    ctx.strokeStyle = isActive ? activeHex : '#D8C7AB';
-    ctx.lineWidth = isActive ? 2.1 : 1.4;
-    ctx.setLineDash([7, 7]);
-    ctx.lineDashOffset = this.reducedMotion ? 0 : -this.planetRotation * (isActive ? 38 : 14);
-    ctx.beginPath();
-    ctx.arc(this.centerX, this.centerY, radius, 0, TAU);
-    ctx.stroke();
-    ctx.setLineDash([]);
     ctx.restore();
   }
 
-  private drawPlanet(palette: PlanetPalette): void {
+  /**
+   * Vibrant glossy 3D striped & cratered cartoon planet matching the gameplay mockup
+   * (bright sunny yellow, coral-red, sky cyan, lime green, emerald teal stripes with
+   * glossy spherical shading, inset cartoon craters, and glowing cyan rim halo).
+   */
+  private getCosmicPlanetStripes(): string[] {
+    const ch = this.level.chapter;
+    const palettes: Record<number, string[]> = {
+      1: ['#FFE853', '#FF5B3B', '#28C8FF', '#7BE338', '#159E6E', '#F9B838'],
+      2: ['#FFE853', '#F44B33', '#22BCFF', '#8EE32E', '#129A6A', '#F6C150'],
+      3: ['#A8F5FF', '#3B96FF', '#9D5CFF', '#FF5FA8', '#2669D9', '#52E5FF'],
+      4: ['#FFF06B', '#FF8E2B', '#FF4557', '#B63DFF', '#3968F2', '#FFD64D'],
+      5: ['#9EFFC7', '#20DCAC', '#1DA3FF', '#6F58FF', '#1847B8', '#42F5CF'],
+      6: ['#FFE963', '#FF5288', '#8B4DFF', '#20C9FF', '#28E07F', '#FFB82E'],
+    };
+    return palettes[ch] || palettes[2];
+  }
+
+  private drawPlanet(_palette: PlanetPalette): void {
     const ctx = this.ctx;
     const cx = this.centerX;
     const cy = this.centerY;
     const pr = this.planetRadius;
-    const strata =
-      palette.strata && palette.strata.length >= 4
-        ? palette.strata
-        : ['#F3E7D3', '#D9C3E0', '#F2AD63', '#B8D8A6', '#F08A7B', '#7998CD', '#EBB98B'];
+    const stripes = this.getCosmicPlanetStripes();
 
     ctx.save();
 
-    ctx.fillStyle = 'rgba(8, 11, 24, 0.38)';
+    // 1. Radiant cyan-white cosmic atmospheric halo behind planet
+    const outerHalo = ctx.createRadialGradient(cx, cy, pr * 0.85, cx, cy, pr * 1.48);
+    outerHalo.addColorStop(0, 'rgba(118, 240, 255, 0.62)');
+    outerHalo.addColorStop(0.42, 'rgba(56, 178, 255, 0.28)');
+    outerHalo.addColorStop(1, 'rgba(30, 96, 255, 0)');
+    ctx.fillStyle = outerHalo;
     ctx.beginPath();
-    ctx.ellipse(cx + pr * 0.62 + 3, cy - pr * 0.32 + 5, pr * 0.45, pr * 0.38, 0.4, 0, TAU);
-    ctx.fill();
-    ctx.fillStyle = strata[2] || palette.mid;
-    ctx.beginPath();
-    ctx.ellipse(cx + pr * 0.56, cy - pr * 0.34, pr * 0.42, pr * 0.34, 0.4, 0, TAU);
-    ctx.fill();
-
-    ctx.fillStyle = strata[3] || palette.core;
-    ctx.beginPath();
-    ctx.ellipse(cx - pr * 0.52, cy + pr * 0.44, pr * 0.42, pr * 0.32, -0.35, 0, TAU);
+    ctx.arc(cx, cy, pr * 1.48, 0, TAU);
     ctx.fill();
 
-    ctx.fillStyle = 'rgba(8, 10, 22, 0.48)';
-    ctx.beginPath();
-    ctx.arc(cx + 4, cy + 7, pr * 1.01, 0, TAU);
-    ctx.fill();
-
-    ctx.fillStyle = strata[0];
+    // Base planet circle
+    ctx.fillStyle = stripes[0];
     ctx.beginPath();
     ctx.arc(cx, cy, pr, 0, TAU);
     ctx.fill();
 
+    // Clipped glossy curved horizontal stripes + craters + 3D shading
     ctx.save();
     ctx.beginPath();
     ctx.arc(cx, cy, pr, 0, TAU);
     ctx.clip();
 
-    const drift = this.reducedMotion ? 0 : Math.sin(this.planetRotation * 0.85) * pr * 0.08;
-    const bandCount = strata.length;
+    const waveDrift = this.reducedMotion ? 0 : Math.sin(this.planetRotation * 0.7) * pr * 0.06;
+    const bandCount = stripes.length;
 
     for (let i = 1; i < bandCount; i++) {
       const t = i / bandCount;
       const yBase = cy - pr + t * (pr * 2.02);
-      const amp = pr * (0.14 + (i % 2) * 0.06);
-      const phase = i * 1.45 + drift * 0.03;
+      const curve = pr * 0.14;
+      const shift = (i % 2 === 0 ? 1 : -1) * waveDrift;
 
-      ctx.fillStyle = 'rgba(16, 20, 38, 0.24)';
+      // Subtle dark separation groove between glossy stripes
+      ctx.fillStyle = 'rgba(10, 18, 60, 0.22)';
       ctx.beginPath();
-      ctx.moveTo(cx - pr * 1.2, yBase - 2.5 + Math.sin(phase) * amp);
-      ctx.bezierCurveTo(
-        cx - pr * 0.45,
-        yBase - 2.5 - Math.cos(phase) * amp * 1.25,
-        cx + pr * 0.38,
-        yBase - 2.5 + Math.sin(phase + 1.4) * amp * 1.25,
-        cx + pr * 1.2,
-        yBase - 2.5 - Math.sin(phase) * amp * 0.8
-      );
-      ctx.lineTo(cx + pr * 1.2, cy + pr * 1.2);
-      ctx.lineTo(cx - pr * 1.2, cy + pr * 1.2);
+      ctx.moveTo(cx - pr * 1.15, yBase - 1.5);
+      ctx.quadraticCurveTo(cx + shift, yBase - 1.5 + curve, cx + pr * 1.15, yBase - 1.5 - curve * 0.35);
+      ctx.lineTo(cx + pr * 1.15, cy + pr * 1.2);
+      ctx.lineTo(cx - pr * 1.15, cy + pr * 1.2);
       ctx.closePath();
       ctx.fill();
 
-      ctx.fillStyle = strata[i];
+      // Main vivid stripe band
+      ctx.fillStyle = stripes[i];
       ctx.beginPath();
-      ctx.moveTo(cx - pr * 1.2, yBase + Math.sin(phase) * amp);
-      ctx.bezierCurveTo(
-        cx - pr * 0.45,
-        yBase - Math.cos(phase) * amp * 1.25,
-        cx + pr * 0.38,
-        yBase + Math.sin(phase + 1.4) * amp * 1.25,
-        cx + pr * 1.2,
-        yBase - Math.sin(phase) * amp * 0.8
-      );
-      ctx.lineTo(cx + pr * 1.2, cy + pr * 1.2);
-      ctx.lineTo(cx - pr * 1.2, cy + pr * 1.2);
+      ctx.moveTo(cx - pr * 1.15, yBase);
+      ctx.quadraticCurveTo(cx + shift, yBase + curve, cx + pr * 1.15, yBase - curve * 0.35);
+      ctx.lineTo(cx + pr * 1.15, cy + pr * 1.2);
+      ctx.lineTo(cx - pr * 1.15, cy + pr * 1.2);
       ctx.closePath();
       ctx.fill();
+
+      // Crisp glossy top-edge highlight on each stripe
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.38)';
+      ctx.lineWidth = 1.6;
+      ctx.beginPath();
+      ctx.moveTo(cx - pr * 1.1, yBase + 1.2);
+      ctx.quadraticCurveTo(cx + shift, yBase + 1.2 + curve, cx + pr * 1.1, yBase + 1.2 - curve * 0.35);
+      ctx.stroke();
     }
 
-    const rimShade = ctx.createRadialGradient(
-      cx - pr * 0.28,
-      cy - pr * 0.28,
-      pr * 0.2,
+    // Smooth inset glossy cartoon craters (matching the mockup planet craters)
+    const craters = [
+      { ox: -0.42, oy: -0.34, rx: 0.17, ry: 0.12, rot: -0.25 },
+      { ox: 0.24, oy: -0.68, rx: 0.13, ry: 0.08, rot: 0.15 },
+      { ox: 0.56, oy: -0.02, rx: 0.16, ry: 0.13, rot: 0.2 },
+      { ox: -0.38, oy: 0.42, rx: 0.2, ry: 0.15, rot: -0.15 },
+      { ox: 0.28, oy: 0.56, rx: 0.14, ry: 0.1, rot: 0.18 },
+      { ox: -0.04, oy: 0.08, rx: 0.1, ry: 0.08, rot: 0 },
+    ];
+    for (let i = 0; i < craters.length; i++) {
+      const c = craters[i];
+      const crx = cx + c.ox * pr;
+      const cry = cy + c.oy * pr;
+      ctx.save();
+      ctx.translate(crx, cry);
+      ctx.rotate(c.rot);
+      ctx.fillStyle = 'rgba(12, 24, 64, 0.3)';
+      ctx.beginPath();
+      ctx.ellipse(0, 0, c.rx * pr, c.ry * pr, 0, 0, TAU);
+      ctx.fill();
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.32)';
+      ctx.lineWidth = 1.1;
+      ctx.beginPath();
+      ctx.ellipse(0, 0.9, c.rx * pr * 0.94, c.ry * pr * 0.9, 0, 0.15, Math.PI - 0.15);
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    // 3D Spherical glossy shading (bright top-left light + rich indigo bottom shadow)
+    const sphereShade = ctx.createRadialGradient(
+      cx - pr * 0.32,
+      cy - pr * 0.34,
+      pr * 0.08,
       cx,
       cy,
-      pr * 1.05
+      pr * 1.06
     );
-    rimShade.addColorStop(0, 'rgba(255, 252, 240, 0.14)');
-    rimShade.addColorStop(0.7, 'rgba(0, 0, 0, 0)');
-    rimShade.addColorStop(1, 'rgba(14, 18, 36, 0.26)');
-    ctx.fillStyle = rimShade;
+    sphereShade.addColorStop(0, 'rgba(255, 255, 255, 0.36)');
+    sphereShade.addColorStop(0.45, 'rgba(255, 255, 255, 0.04)');
+    sphereShade.addColorStop(0.76, 'rgba(14, 24, 92, 0.18)');
+    sphereShade.addColorStop(1, 'rgba(9, 14, 62, 0.52)');
+    ctx.fillStyle = sphereShade;
     ctx.fillRect(cx - pr, cy - pr, pr * 2, pr * 2);
 
+    // Glossy glass-like specular shine arc on upper-left limb
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.34)';
+    ctx.beginPath();
+    ctx.ellipse(cx - pr * 0.32, cy - pr * 0.42, pr * 0.36, pr * 0.14, -0.58, 0, TAU);
+    ctx.fill();
+
     ctx.restore();
+
+    // Crisp luminous cyan-white rim stroke around planet edge
+    ctx.strokeStyle = 'rgba(182, 248, 255, 0.85)';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(cx, cy, pr, 0, TAU);
+    ctx.stroke();
+
     ctx.restore();
   }
 
@@ -1488,123 +1390,120 @@ export class OrbitEngine {
 
     ctx.save();
     ctx.translate(px, py);
-    ctx.rotate(this.portal.angle + Math.PI * 0.25);
 
     if (!this.portal.active) {
-      ctx.strokeStyle = 'rgba(232, 217, 190, 0.44)';
-      ctx.lineWidth = 1.7;
-      ctx.setLineDash([4, 4]);
+      // Glowing white-cyan dashed circular beacon ring (matches upper-right ring in mockup)
+      const softGlow = ctx.createRadialGradient(0, 0, 2 * scale, 0, 0, 22 * scale);
+      softGlow.addColorStop(0, 'rgba(186, 244, 255, 0.34)');
+      softGlow.addColorStop(0.6, 'rgba(116, 214, 255, 0.16)');
+      softGlow.addColorStop(1, 'rgba(116, 214, 255, 0)');
+      ctx.fillStyle = softGlow;
       ctx.beginPath();
-      ctx.ellipse(0, 0, 15.5 * scale, 10.5 * scale, 0, 0, TAU);
+      ctx.arc(0, 0, 22 * scale, 0, TAU);
+      ctx.fill();
+
+      ctx.rotate(this.elapsedClock * 0.55);
+      ctx.strokeStyle = 'rgba(224, 248, 255, 0.82)';
+      ctx.lineWidth = 2.4 * scale;
+      ctx.lineCap = 'round';
+      ctx.setLineDash([7 * scale, 6 * scale]);
+      ctx.beginPath();
+      ctx.arc(0, 0, 14.5 * scale, 0, TAU);
       ctx.stroke();
       ctx.setLineDash([]);
 
-      ctx.fillStyle = 'rgba(232, 217, 190, 0.24)';
+      ctx.strokeStyle = 'rgba(128, 226, 255, 0.55)';
+      ctx.lineWidth = 1.4 * scale;
       ctx.beginPath();
-      ctx.arc(0, 0, 3.6 * scale, 0, TAU);
-      ctx.fill();
+      ctx.arc(0, 0, 8.5 * scale, 0, TAU);
+      ctx.stroke();
     } else {
-      const pulseScale = this.reducedMotion ? 1 : 1 + Math.sin(this.portal.pulse) * 0.08;
+      const pulseScale = this.reducedMotion ? 1 : 1 + Math.sin(this.portal.pulse) * 0.09;
       ctx.scale(pulseScale, pulseScale);
 
-      const glow = ctx.createRadialGradient(0, 0, 6 * scale, 0, 0, 29 * scale);
-      glow.addColorStop(0, 'rgba(255, 241, 186, 0.52)');
-      glow.addColorStop(0.55, 'rgba(243, 194, 79, 0.2)');
-      glow.addColorStop(1, 'rgba(243, 194, 79, 0)');
+      // Radiant cyan-gold vortex halo
+      const glow = ctx.createRadialGradient(0, 0, 4 * scale, 0, 0, 34 * scale);
+      glow.addColorStop(0, 'rgba(255, 255, 255, 0.92)');
+      glow.addColorStop(0.35, 'rgba(72, 242, 255, 0.65)');
+      glow.addColorStop(0.68, 'rgba(255, 216, 72, 0.28)');
+      glow.addColorStop(1, 'rgba(72, 242, 255, 0)');
       ctx.fillStyle = glow;
       ctx.beginPath();
-      ctx.arc(0, 0, 29 * scale, 0, TAU);
+      ctx.arc(0, 0, 34 * scale, 0, TAU);
       ctx.fill();
 
-      ctx.fillStyle = 'rgba(8, 10, 22, 0.42)';
+      // Swirling outer golden ring
+      ctx.save();
+      ctx.rotate(this.elapsedClock * 2.4);
+      ctx.strokeStyle = '#FFE45C';
+      ctx.lineWidth = 3 * scale;
+      ctx.setLineDash([10 * scale, 6 * scale]);
       ctx.beginPath();
-      ctx.ellipse(2.5 * scale, 3.5 * scale, 19 * scale, 12.5 * scale, 0, 0, TAU);
-      ctx.fill();
-
-      ctx.fillStyle = '#FFF3D1';
-      ctx.beginPath();
-      ctx.ellipse(0, 0, 18.5 * scale, 12.2 * scale, 0, 0, TAU);
-      ctx.fill();
-
-      ctx.fillStyle = '#F3C24F';
-      ctx.beginPath();
-      ctx.ellipse(0, 0, 14.5 * scale, 9.2 * scale, 0, 0, TAU);
-      ctx.fill();
-
-      ctx.strokeStyle = '#FFF8E0';
-      ctx.lineWidth = 1.2 * scale;
-      ctx.beginPath();
-      ctx.ellipse(0, 0, 11.4 * scale, 7.1 * scale, 0, 0, TAU);
+      ctx.arc(0, 0, 18.5 * scale, 0, TAU);
       ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.restore();
 
-      ctx.fillStyle = '#1E243B';
+      // Bright cyan-white portal aperture
+      const coreGrad = ctx.createRadialGradient(0, 0, 1.5 * scale, 0, 0, 14 * scale);
+      coreGrad.addColorStop(0, '#FFFFFF');
+      coreGrad.addColorStop(0.45, '#58F3FF');
+      coreGrad.addColorStop(0.8, '#2864FF');
+      coreGrad.addColorStop(1, '#121E6B');
+      ctx.fillStyle = coreGrad;
       ctx.beginPath();
-      ctx.ellipse(0, 0, 9.8 * scale, 5.8 * scale, 0, 0, TAU);
+      ctx.arc(0, 0, 14 * scale, 0, TAU);
       ctx.fill();
+
+      ctx.strokeStyle = '#E6FFFF';
+      ctx.lineWidth = 2.2 * scale;
+      ctx.beginPath();
+      ctx.arc(0, 0, 14 * scale, 0, TAU);
+      ctx.stroke();
     }
 
     ctx.restore();
   }
 
-  private drawFivePointPaperStar(
+  private drawGlowingStarShape(
     ctx: CanvasRenderingContext2D,
     x: number,
     y: number,
     outerR: number,
-    mainHex: string,
-    highlightHex: string,
-    shadowHex: string,
-    withCutoutShadow: boolean
+    topColor: string,
+    bottomColor: string,
+    withOutline: boolean
   ): void {
-    const innerR = outerR * 0.44;
-    const pts: Array<{ x: number; y: number }> = [];
+    const innerR = outerR * 0.48;
+    ctx.beginPath();
     for (let i = 0; i < 10; i++) {
       const r = i % 2 === 0 ? outerR : innerR;
       const a = (i * Math.PI) / 5 - Math.PI / 2;
-      pts.push({ x: x + Math.cos(a) * r, y: y + Math.sin(a) * r });
-    }
-
-    if (withCutoutShadow) {
-      ctx.fillStyle = 'rgba(10, 14, 28, 0.34)';
-      ctx.beginPath();
-      for (let i = 0; i < 10; i++) {
-        const px = pts[i].x + 2;
-        const py = pts[i].y + 3;
-        if (i === 0) ctx.moveTo(px, py);
-        else ctx.lineTo(px, py);
-      }
-      ctx.closePath();
-      ctx.fill();
-    }
-
-    ctx.fillStyle = mainHex;
-    ctx.beginPath();
-    for (let i = 0; i < 10; i++) {
-      if (i === 0) ctx.moveTo(pts[i].x, pts[i].y);
-      else ctx.lineTo(pts[i].x, pts[i].y);
+      const px = x + Math.cos(a) * r;
+      const py = y + Math.sin(a) * r;
+      if (i === 0) ctx.moveTo(px, py);
+      else ctx.lineTo(px, py);
     }
     ctx.closePath();
+
+    const grad = ctx.createLinearGradient(x, y - outerR, x, y + outerR);
+    grad.addColorStop(0, topColor);
+    grad.addColorStop(1, bottomColor);
+    ctx.fillStyle = grad;
     ctx.fill();
 
-    ctx.fillStyle = highlightHex;
-    for (let i = 0; i < 10; i += 2) {
-      const next = pts[(i + 1) % 10];
+    if (withOutline) {
+      ctx.lineJoin = 'round';
+      ctx.strokeStyle = '#C95800';
+      ctx.lineWidth = Math.max(1.6, outerR * 0.14);
+      ctx.stroke();
+
+      // Inner glossy specular sheen
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.58)';
       ctx.beginPath();
-      ctx.moveTo(x, y);
-      ctx.lineTo(pts[i].x, pts[i].y);
-      ctx.lineTo(next.x, next.y);
-      ctx.closePath();
+      ctx.ellipse(x - outerR * 0.12, y - outerR * 0.24, outerR * 0.26, outerR * 0.13, -0.35, 0, TAU);
       ctx.fill();
     }
-
-    ctx.strokeStyle = shadowHex;
-    ctx.lineWidth = 0.7;
-    ctx.beginPath();
-    for (let i = 1; i < 10; i += 2) {
-      ctx.moveTo(x, y);
-      ctx.lineTo(pts[i].x, pts[i].y);
-    }
-    ctx.stroke();
   }
 
   private drawStar(x: number, y: number, scale: number): void {
@@ -1615,21 +1514,17 @@ export class OrbitEngine {
     ctx.translate(x, y);
     ctx.scale(s, s);
 
-    ctx.fillStyle = 'rgba(243, 194, 79, 0.16)';
+    // Radiant golden-orange ambient glow halo (matching gameplay mockup stars)
+    const halo = ctx.createRadialGradient(0, 0, 3, 0, 0, 24);
+    halo.addColorStop(0, 'rgba(255, 232, 84, 0.65)');
+    halo.addColorStop(0.5, 'rgba(255, 148, 0, 0.26)');
+    halo.addColorStop(1, 'rgba(255, 136, 0, 0)');
+    ctx.fillStyle = halo;
     ctx.beginPath();
-    ctx.arc(0, 0, 14.5, 0, TAU);
+    ctx.arc(0, 0, 24, 0, TAU);
     ctx.fill();
 
-    this.drawFivePointPaperStar(
-      ctx,
-      0,
-      0,
-      11.5,
-      '#F3C24F',
-      'rgba(255, 245, 196, 0.65)',
-      'rgba(176, 122, 24, 0.45)',
-      true
-    );
+    this.drawGlowingStarShape(ctx, 0, 0, 14.5, '#FFF57A', '#FF9900', true);
 
     ctx.restore();
   }
@@ -1642,165 +1537,144 @@ export class OrbitEngine {
     ctx.translate(x, y);
 
     if (h.type === 'panel') {
+      // 1. Glowing Neon-Green Energy Saber / Plasma Comet (matches right-hand green saber in mockup)
       const travelDir = h.speed >= 0 ? h.angle + Math.PI / 2 : h.angle - Math.PI / 2;
       ctx.rotate(travelDir);
 
-      ctx.save();
-      ctx.translate(2.5, 4);
-      ctx.fillStyle = 'rgba(8, 10, 22, 0.42)';
+      // Luminous green outer glow aura
+      const saberGlow = ctx.createRadialGradient(-sz * 0.3, 0, sz * 0.2, -sz * 0.3, 0, sz * 2.35);
+      saberGlow.addColorStop(0, 'rgba(60, 255, 140, 0.52)');
+      saberGlow.addColorStop(0.55, 'rgba(0, 224, 118, 0.2)');
+      saberGlow.addColorStop(1, 'rgba(0, 224, 118, 0)');
+      ctx.fillStyle = saberGlow;
       ctx.beginPath();
-      ctx.arc(0, 0, sz * 0.78, 0, TAU);
-      ctx.moveTo(0, -sz * 0.75);
-      ctx.lineTo(-sz * 2.45, 0);
-      ctx.lineTo(0, sz * 0.75);
-      ctx.closePath();
+      ctx.ellipse(-sz * 0.3, 0, sz * 2.35, sz * 1.15, 0, 0, TAU);
       ctx.fill();
-      ctx.restore();
 
-      ctx.fillStyle = '#F5E3BE';
+      // Curved neon-green plasma blade
+      ctx.fillStyle = '#14E870';
       ctx.beginPath();
-      ctx.moveTo(sz * 0.15, -sz * 0.78);
-      ctx.lineTo(-sz * 2.35, -sz * 0.56);
-      ctx.lineTo(-sz * 1.45, -sz * 0.14);
-      ctx.lineTo(-sz * 2.65, 0.08 * sz);
-      ctx.lineTo(-sz * 1.5, sz * 0.28);
-      ctx.lineTo(-sz * 2.15, sz * 0.65);
-      ctx.lineTo(sz * 0.15, sz * 0.78);
+      ctx.moveTo(sz * 1.45, -sz * 0.08);
+      ctx.quadraticCurveTo(sz * 0.45, -sz * 0.56, -sz * 0.85, -sz * 0.38);
+      ctx.lineTo(-sz * 0.85, sz * 0.38);
+      ctx.quadraticCurveTo(sz * 0.45, sz * 0.22, sz * 1.45, sz * 0.08);
       ctx.closePath();
       ctx.fill();
 
-      ctx.fillStyle = '#E8A848';
+      // Bright electric lime-white inner plasma core
+      ctx.fillStyle = '#CCFFD9';
       ctx.beginPath();
-      ctx.moveTo(sz * 0.1, -sz * 0.56);
-      ctx.lineTo(-sz * 1.45, -sz * 0.34);
-      ctx.lineTo(-sz * 1.0, 0);
-      ctx.lineTo(-sz * 1.55, sz * 0.34);
-      ctx.lineTo(sz * 0.1, sz * 0.56);
+      ctx.moveTo(sz * 1.25, 0);
+      ctx.quadraticCurveTo(sz * 0.35, -sz * 0.26, -sz * 0.72, -sz * 0.14);
+      ctx.lineTo(-sz * 0.72, sz * 0.14);
+      ctx.quadraticCurveTo(sz * 0.35, sz * 0.06, sz * 1.25, 0);
       ctx.closePath();
       ctx.fill();
 
-      ctx.fillStyle = '#8F8073';
+      // Golden hilt & emitter collar at the base
+      ctx.fillStyle = '#FFB81C';
+      ctx.strokeStyle = '#9E4B00';
+      ctx.lineWidth = 1.2;
       ctx.beginPath();
-      ctx.arc(0, 0, sz * 0.78, 0, TAU);
+      ctx.roundRect(-sz * 1.05, -sz * 0.55, sz * 0.34, sz * 1.1, 3);
       ctx.fill();
-
-      ctx.fillStyle = '#B1A294';
-      ctx.beginPath();
-      ctx.moveTo(-sz * 0.45, -sz * 0.48);
-      ctx.lineTo(sz * 0.42, -sz * 0.45);
-      ctx.lineTo(sz * 0.1, sz * 0.25);
-      ctx.closePath();
-      ctx.fill();
-
-      ctx.strokeStyle = 'rgba(240, 146, 118, 0.75)';
-      ctx.lineWidth = 1.25;
-      ctx.beginPath();
-      ctx.arc(0, 0, sz * 0.82, 0, TAU);
       ctx.stroke();
+
+      ctx.fillStyle = '#47D67C';
+      ctx.beginPath();
+      ctx.roundRect(-sz * 1.55, -sz * 0.28, sz * 0.55, sz * 0.56, 3);
+      ctx.fill();
     } else if (h.type === 'asteroid') {
+      // 2. Fiery Glowing Red-Orange Studded Asteroid Cube-Rock (matches left-hand asteroid in mockup)
       ctx.rotate(h.spin);
 
-      const pts: Array<{ x: number; y: number }> = [];
-      const count = 8;
-      const mults = [1.05, 0.82, 1.0, 0.88, 1.06, 0.78, 0.96, 0.84];
-      for (let i = 0; i < count; i++) {
-        const ang = (i * TAU) / count;
-        const r = sz * mults[i];
-        pts.push({ x: Math.cos(ang) * r, y: Math.sin(ang) * r });
-      }
-
-      ctx.fillStyle = 'rgba(8, 10, 22, 0.45)';
+      const glow = ctx.createRadialGradient(0, 0, sz * 0.3, 0, 0, sz * 1.75);
+      glow.addColorStop(0, 'rgba(255, 118, 42, 0.5)');
+      glow.addColorStop(0.6, 'rgba(235, 58, 22, 0.18)');
+      glow.addColorStop(1, 'rgba(235, 58, 22, 0)');
+      ctx.fillStyle = glow;
       ctx.beginPath();
-      for (let i = 0; i < count; i++) {
-        const px = pts[i].x + 2.5;
-        const py = pts[i].y + 4;
-        if (i === 0) ctx.moveTo(px, py);
-        else ctx.lineTo(px, py);
-      }
+      ctx.arc(0, 0, sz * 1.75, 0, TAU);
+      ctx.fill();
+
+      // Concave-edged cartoon fiery block silhouette
+      const rockGrad = ctx.createLinearGradient(-sz, -sz, sz, sz);
+      rockGrad.addColorStop(0, '#FFA03B');
+      rockGrad.addColorStop(0.45, '#F24D22');
+      rockGrad.addColorStop(1, '#B31D12');
+
+      ctx.fillStyle = rockGrad;
+      ctx.beginPath();
+      ctx.moveTo(-sz * 0.92, -sz * 0.84);
+      ctx.quadraticCurveTo(0, -sz * 0.62, sz * 0.92, -sz * 0.84);
+      ctx.quadraticCurveTo(sz * 0.68, 0, sz * 0.92, sz * 0.84);
+      ctx.quadraticCurveTo(0, sz * 0.62, -sz * 0.92, sz * 0.84);
+      ctx.quadraticCurveTo(-sz * 0.68, 0, -sz * 0.92, -sz * 0.84);
       ctx.closePath();
       ctx.fill();
 
-      ctx.fillStyle = '#9E9185';
+      ctx.strokeStyle = '#FFD37A';
+      ctx.lineWidth = 1.4;
+      ctx.stroke();
+
+      // Crater dimples & glowing ember flecks
+      ctx.fillStyle = 'rgba(98, 14, 12, 0.55)';
       ctx.beginPath();
-      for (let i = 0; i < count; i++) {
-        if (i === 0) ctx.moveTo(pts[i].x, pts[i].y);
-        else ctx.lineTo(pts[i].x, pts[i].y);
-      }
-      ctx.closePath();
+      ctx.arc(-sz * 0.28, -sz * 0.2, sz * 0.22, 0, TAU);
+      ctx.arc(sz * 0.3, sz * 0.22, sz * 0.17, 0, TAU);
+      ctx.arc(sz * 0.22, -sz * 0.32, sz * 0.11, 0, TAU);
       ctx.fill();
 
-      const cxOff = sz * 0.08;
-      const cyOff = -sz * 0.06;
-      const facetFills = [
-        '#B8ABA0',
-        '#7E7267',
-        '#A99C8F',
-        '#695F56',
-        '#8E8176',
-        '#C0B4A8',
-        '#786C62',
-        '#9A8D81',
+      ctx.fillStyle = 'rgba(255, 240, 175, 0.72)';
+      ctx.beginPath();
+      ctx.arc(-sz * 0.32, sz * 0.34, sz * 0.09, 0, TAU);
+      ctx.arc(sz * 0.02, -sz * 0.05, sz * 0.08, 0, TAU);
+      ctx.fill();
+    } else {
+      // 3. Vibrant Multi-Color Glossy Crystal Star-Mine (matches upper-right rainbow crystal in mockup)
+      ctx.rotate(h.spin);
+
+      const crystalGlow = ctx.createRadialGradient(0, 0, sz * 0.2, 0, 0, sz * 1.85);
+      crystalGlow.addColorStop(0, 'rgba(255, 240, 138, 0.62)');
+      crystalGlow.addColorStop(0.5, 'rgba(255, 86, 168, 0.25)');
+      crystalGlow.addColorStop(1, 'rgba(72, 232, 255, 0)');
+      ctx.fillStyle = crystalGlow;
+      ctx.beginPath();
+      ctx.arc(0, 0, sz * 1.85, 0, TAU);
+      ctx.fill();
+
+      // 4-point faceted rainbow crystal star
+      const spikeR = sz * 1.2;
+      const midR = sz * 0.45;
+      const facets = [
+        { a1: -Math.PI / 2, a2: -Math.PI / 4, c: '#FFE84D' },
+        { a1: -Math.PI / 4, a2: 0, c: '#FF9A1F' },
+        { a1: 0, a2: Math.PI / 4, c: '#FF3E5E' },
+        { a1: Math.PI / 4, a2: Math.PI / 2, c: '#FF5CC8' },
+        { a1: Math.PI / 2, a2: (3 * Math.PI) / 4, c: '#9B4DFF' },
+        { a1: (3 * Math.PI) / 4, a2: Math.PI, c: '#2998FF' },
+        { a1: Math.PI, a2: (5 * Math.PI) / 4, c: '#28E8FF' },
+        { a1: (5 * Math.PI) / 4, a2: (3 * Math.PI) / 2, c: '#6CFF7A' },
       ];
-      for (let i = 0; i < count; i++) {
-        const p1 = pts[i];
-        const p2 = pts[(i + 1) % count];
-        ctx.fillStyle = facetFills[i];
+
+      for (let i = 0; i < facets.length; i++) {
+        const f = facets[i];
+        const r1 = i % 2 === 0 ? spikeR : midR;
+        const r2 = i % 2 === 0 ? midR : spikeR;
+        ctx.fillStyle = f.c;
         ctx.beginPath();
-        ctx.moveTo(cxOff, cyOff);
-        ctx.lineTo(p1.x, p1.y);
-        ctx.lineTo(p2.x, p2.y);
+        ctx.moveTo(0, 0);
+        ctx.lineTo(Math.cos(f.a1) * r1, Math.sin(f.a1) * r1);
+        ctx.lineTo(Math.cos(f.a2) * r2, Math.sin(f.a2) * r2);
         ctx.closePath();
         ctx.fill();
       }
 
-      ctx.strokeStyle = 'rgba(227, 128, 104, 0.62)';
-      ctx.lineWidth = 1.35;
+      // Crisp specular white gleam in center
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.85)';
       ctx.beginPath();
-      for (let i = 0; i < count; i++) {
-        if (i === 0) ctx.moveTo(pts[i].x, pts[i].y);
-        else ctx.lineTo(pts[i].x, pts[i].y);
-      }
-      ctx.closePath();
-      ctx.stroke();
-    } else {
-      ctx.rotate(h.spin);
-
-      ctx.fillStyle = 'rgba(8, 10, 22, 0.44)';
-      ctx.beginPath();
-      ctx.moveTo(2.5, -sz * 1.0 + 4);
-      ctx.lineTo(sz * 0.88 + 2.5, 4);
-      ctx.lineTo(2.5, sz * 1.0 + 4);
-      ctx.lineTo(-sz * 0.88 + 2.5, 4);
-      ctx.closePath();
+      ctx.arc(0, 0, sz * 0.24, 0, TAU);
       ctx.fill();
-
-      ctx.fillStyle = '#D47152';
-      ctx.beginPath();
-      ctx.moveTo(0, -sz * 1.0);
-      ctx.lineTo(0, sz * 1.0);
-      ctx.lineTo(-sz * 0.88, 0);
-      ctx.closePath();
-      ctx.fill();
-
-      ctx.fillStyle = '#AD4D32';
-      ctx.beginPath();
-      ctx.moveTo(0, -sz * 1.0);
-      ctx.lineTo(sz * 0.88, 0);
-      ctx.lineTo(0, sz * 1.0);
-      ctx.closePath();
-      ctx.fill();
-
-      ctx.strokeStyle = 'rgba(250, 243, 230, 0.78)';
-      ctx.lineWidth = 1.25;
-      ctx.setLineDash([2.5, 2.5]);
-      ctx.beginPath();
-      ctx.moveTo(0, -sz * 0.62);
-      ctx.lineTo(sz * 0.54, 0);
-      ctx.lineTo(0, sz * 0.62);
-      ctx.lineTo(-sz * 0.54, 0);
-      ctx.closePath();
-      ctx.stroke();
-      ctx.setLineDash([]);
     }
 
     ctx.restore();
@@ -1811,69 +1685,68 @@ export class OrbitEngine {
     if (len < 3) return;
     const ctx = this.ctx;
     const satDef = getSatelliteById(this.satelliteId);
-    const scale = (this.outerRadius / 148) * (0.75 + satDef.sizeScale * 0.25);
+    const scale = (this.outerRadius / 148) * (0.78 + satDef.sizeScale * 0.22);
 
-    const leftPts: Array<{ x: number; y: number }> = [];
-    const rightPts: Array<{ x: number; y: number }> = [];
+    const buildFlamePath = (widthMult: number) => {
+      const leftPts: Array<{ x: number; y: number }> = [];
+      const rightPts: Array<{ x: number; y: number }> = [];
+      for (let i = 0; i < len; i++) {
+        const p = this.satTrail[i];
+        const prev = this.satTrail[Math.max(0, i - 1)];
+        const next = this.satTrail[Math.min(len - 1, i + 1)];
+        const dx = next.x - prev.x;
+        const dy = next.y - prev.y;
+        const dist = Math.hypot(dx, dy) || 1;
+        const nx = -dy / dist;
+        const ny = dx / dist;
 
-    for (let i = 0; i < len; i++) {
-      const p = this.satTrail[i];
-      const prev = this.satTrail[Math.max(0, i - 1)];
-      const next = this.satTrail[Math.min(len - 1, i + 1)];
-      const dx = next.x - prev.x;
-      const dy = next.y - prev.y;
-      const dist = Math.hypot(dx, dy) || 1;
-      const nx = -dy / dist;
-      const ny = dx / dist;
-
-      const ratio = i / (len - 1);
-      const flutter = Math.sin(i * 0.55 - this.elapsedClock * 5) * 1.2 * (1 - ratio);
-      const halfW = (0.7 + ratio * 3.8) * scale;
-      leftPts.push({ x: p.x + nx * (halfW + flutter), y: p.y + ny * (halfW + flutter) });
-      rightPts.push({ x: p.x - nx * (halfW - flutter), y: p.y - ny * (halfW - flutter) });
-    }
-
-    const buildRibbonPath = (ox: number, oy: number) => {
+        const ratio = i / (len - 1);
+        const flicker = Math.sin(i * 0.9 - this.elapsedClock * 16) * 0.9 * (1 - ratio);
+        const halfW = (0.35 + Math.pow(ratio, 1.35) * 5.2 * widthMult) * scale;
+        leftPts.push({ x: p.x + nx * (halfW + flicker), y: p.y + ny * (halfW + flicker) });
+        rightPts.push({ x: p.x - nx * (halfW - flicker), y: p.y - ny * (halfW - flicker) });
+      }
       ctx.beginPath();
-      ctx.moveTo(leftPts[0].x + ox, leftPts[0].y + oy);
+      ctx.moveTo(leftPts[0].x, leftPts[0].y);
       for (let i = 1; i < len; i++) {
-        ctx.lineTo(leftPts[i].x + ox, leftPts[i].y + oy);
+        ctx.lineTo(leftPts[i].x, leftPts[i].y);
       }
       for (let i = len - 1; i >= 0; i--) {
-        ctx.lineTo(rightPts[i].x + ox, rightPts[i].y + oy);
+        ctx.lineTo(rightPts[i].x, rightPts[i].y);
       }
       ctx.closePath();
     };
 
-    // Distinct paper ribbon tint per satellite class
-    let ribbonHex = this.satTargetOrbit === 0 ? '#D4465C' : '#B83453';
+    // Roaring fiery golden thruster plume (with sleek color variants per satellite)
+    let outerColor = 'rgba(255, 132, 0, 0.34)';
+    let midColor = '#FFB81C';
+    let coreColor = '#FFF9BF';
     if (this.satelliteId === 'tinny') {
-      ribbonHex = '#5EB892';
+      outerColor = 'rgba(32, 232, 168, 0.34)';
+      midColor = '#2EF0A8';
+      coreColor = '#E6FFF7';
     } else if (this.satelliteId === 'heavy') {
-      ribbonHex = '#E3A43B';
+      outerColor = 'rgba(255, 168, 24, 0.42)';
+      midColor = '#FFD43B';
+      coreColor = '#FFFCE0';
     } else if (this.satelliteId === 'nano_stopper') {
-      ribbonHex = '#A588D8';
+      outerColor = 'rgba(130, 186, 255, 0.38)';
+      midColor = '#66E3FF';
+      coreColor = '#F4FFFF';
     }
 
     ctx.save();
-    buildRibbonPath(2, 3.5);
-    ctx.fillStyle = 'rgba(8, 10, 22, 0.32)';
+    buildFlamePath(1.65);
+    ctx.fillStyle = outerColor;
     ctx.fill();
 
-    buildRibbonPath(0, 0);
-    ctx.fillStyle = ribbonHex;
+    buildFlamePath(1.0);
+    ctx.fillStyle = midColor;
     ctx.fill();
 
-    ctx.strokeStyle = 'rgba(255, 240, 232, 0.36)';
-    ctx.lineWidth = 1.1 * scale;
-    ctx.beginPath();
-    for (let i = 1; i < len; i++) {
-      const p = this.satTrail[i];
-      if (i === 1) ctx.moveTo(p.x, p.y);
-      else ctx.lineTo(p.x, p.y);
-    }
-    ctx.stroke();
-
+    buildFlamePath(0.5);
+    ctx.fillStyle = coreColor;
+    ctx.fill();
     ctx.restore();
   }
 
@@ -1901,19 +1774,23 @@ export class OrbitEngine {
     ctx.save();
     ctx.translate(sx, sy);
 
-    // Full-obstacle Shield Bubble (renders in world space around craft)
+    // Full-obstacle Holographic Cyan Shield Bubble (renders in world space around craft)
     if (this.shieldActive && this.satWarpProgress === 0) {
-      const baseBubbleR = Math.max(15, 20.5 * (this.outerRadius / 148) * (0.78 + satDef.sizeScale * 0.22));
+      const baseBubbleR = Math.max(16, 22 * (this.outerRadius / 148) * (0.78 + satDef.sizeScale * 0.22));
       ctx.save();
-      ctx.fillStyle = 'rgba(130, 208, 244, 0.16)';
+      const shieldGrad = ctx.createRadialGradient(0, 0, baseBubbleR * 0.35, 0, 0, baseBubbleR * 1.18);
+      shieldGrad.addColorStop(0, 'rgba(72, 238, 255, 0.08)');
+      shieldGrad.addColorStop(0.75, 'rgba(66, 230, 255, 0.3)');
+      shieldGrad.addColorStop(1, 'rgba(66, 230, 255, 0)');
+      ctx.fillStyle = shieldGrad;
       ctx.beginPath();
-      ctx.arc(0, 0, baseBubbleR, 0, TAU);
+      ctx.arc(0, 0, baseBubbleR * 1.18, 0, TAU);
       ctx.fill();
 
-      ctx.strokeStyle = '#9EDDF7';
-      ctx.lineWidth = 2;
-      ctx.setLineDash([5, 4]);
-      ctx.lineDashOffset = -this.elapsedClock * 18;
+      ctx.strokeStyle = '#6CF4FF';
+      ctx.lineWidth = 2.2;
+      ctx.setLineDash([6, 4]);
+      ctx.lineDashOffset = -this.elapsedClock * 24;
       ctx.beginPath();
       ctx.arc(0, 0, baseBubbleR, 0, TAU);
       ctx.stroke();
@@ -1923,119 +1800,195 @@ export class OrbitEngine {
 
     ctx.rotate(tangentAngle);
 
-    const stretchX = (1 - this.satSquash * 0.18) * drawScale;
-    const stretchY = (1 + this.satSquash * 0.22) * drawScale;
+    const stretchX = (1 - this.satSquash * 0.16) * drawScale;
+    const stretchY = (1 + this.satSquash * 0.2) * drawScale;
     ctx.scale(stretchX, stretchY);
 
-    // Heavy satellite golden armor arc indicator when cruising on the protected outer orbit
+    // Heavy satellite glowing golden outer-orbit armor bumper when cruising on outer orbit
     if (satDef.outerImmune && this.satTargetOrbit === 1 && this.satWarpProgress === 0) {
       ctx.save();
-      ctx.strokeStyle = 'rgba(243, 194, 79, 0.85)';
-      ctx.lineWidth = 2.4;
+      ctx.strokeStyle = 'rgba(255, 214, 68, 0.35)';
+      ctx.lineWidth = 7;
       ctx.beginPath();
-      ctx.arc(0, 0, 17, -Math.PI * 0.88, -Math.PI * 0.12);
+      ctx.arc(0, -1, 18.5, -Math.PI * 0.88, -Math.PI * 0.12);
+      ctx.stroke();
+
+      ctx.strokeStyle = '#FFE45C';
+      ctx.lineWidth = 2.6;
+      ctx.beginPath();
+      ctx.arc(0, -1, 18.5, -Math.PI * 0.88, -Math.PI * 0.12);
       ctx.stroke();
       ctx.restore();
     }
 
-    // Paper cutout drop shadow
-    ctx.save();
-    ctx.translate(2.4, 3.8);
-    ctx.fillStyle = 'rgba(8, 10, 22, 0.42)';
-    ctx.fillRect(-15.5, -4, 31, 8);
-    this.fillRoundedRect(ctx, -5.2, -9, 10.4, 18, 3.6, 'rgba(8, 10, 22, 0.42)');
-    ctx.restore();
+    // Nano Stopper subtle glowing cyan chrono ring
+    if (this.satelliteId === 'nano_stopper' && this.satWarpProgress === 0) {
+      ctx.save();
+      ctx.strokeStyle = 'rgba(104, 240, 255, 0.72)';
+      ctx.lineWidth = 1.6;
+      ctx.setLineDash([4, 4]);
+      ctx.beginPath();
+      ctx.arc(0, 0, 16, 0, TAU);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.restore();
+    }
 
-    // Palette per satellite variant
-    let wingTop = '#A8C8DF';
-    let wingBottom = '#7E9FBE';
-    let hullMain = '#F5C4B6';
-    let hullLight = '#FAF3E6';
-    let knotColor = '#C23B58';
+    // Accent colors per satellite class (Classic matches the iconic red-and-white rocket in the mockup!)
+    let accentBright = '#FF3838';
+    let accentDeep = '#B81420';
+    let hullLight = '#FFFFFF';
+    let hullShade = '#C9D3F2';
+    let glassCore = '#52E8FF';
+    let glassEdge = '#1875FF';
 
     if (this.satelliteId === 'tinny') {
-      wingTop = '#A8DFC4';
-      wingBottom = '#6BAE8E';
-      hullMain = '#F6DF9C';
-      hullLight = '#FFF8E2';
-      knotColor = '#5EB892';
+      accentBright = '#26E89A';
+      accentDeep = '#0E9A68';
+      hullLight = '#FFFDE8';
+      hullShade = '#BCEFD6';
+      glassCore = '#FFE866';
+      glassEdge = '#FF9500';
     } else if (this.satelliteId === 'heavy') {
-      wingTop = '#F2C763';
-      wingBottom = '#C28F2B';
-      hullMain = '#637FA8';
-      hullLight = '#92B0D4';
-      knotColor = '#E3A43B';
+      accentBright = '#FFC82E';
+      accentDeep = '#C96E00';
+      hullLight = '#E4EEFF';
+      hullShade = '#7D9EE0';
+      glassCore = '#78F5FF';
+      glassEdge = '#205EFF';
     } else if (this.satelliteId === 'nano_stopper') {
-      wingTop = '#D7C2F2';
-      wingBottom = '#9F84C9';
-      hullMain = '#F7E7C6';
-      hullLight = '#FFFBF0';
-      knotColor = '#A588D8';
+      accentBright = '#A85CFF';
+      accentDeep = '#5E24C8';
+      hullLight = '#F8F2FF';
+      hullShade = '#CBB6F2';
+      glassCore = '#7CF8FF';
+      glassEdge = '#20B2FF';
     }
 
-    // Left & right folded origami solar wings
-    ctx.fillStyle = wingTop;
-    ctx.fillRect(-15.5, -4, 10.5, 4);
-    ctx.fillRect(5, -4, 10.5, 4);
-    ctx.fillStyle = wingBottom;
-    ctx.fillRect(-15.5, 0, 10.5, 4);
-    ctx.fillRect(5, 0, 10.5, 4);
-
-    // Wing crease lines
-    ctx.strokeStyle = 'rgba(39, 50, 79, 0.35)';
-    ctx.lineWidth = 0.85;
+    // Miniature flickering thruster flame jet at nozzle
+    const flameFlicker = 0.85 + Math.sin(this.elapsedClock * 36) * 0.22;
+    ctx.fillStyle = '#FF9000';
     ctx.beginPath();
-    ctx.moveTo(-10.5, -4);
-    ctx.lineTo(-10.5, 4);
-    ctx.moveTo(10.5, -4);
-    ctx.lineTo(10.5, 4);
-    ctx.stroke();
-
-    // Folded capsule hull
-    this.fillRoundedRect(ctx, -5.2, -8.8, 10.4, 17.6, 3.4, hullMain);
-    this.fillRoundedRect(ctx, -4.4, -7.8, 4.4, 15.6, 2.2, hullLight);
-
-    // Heavy armor trim stripe
-    if (this.satelliteId === 'heavy') {
-      ctx.fillStyle = '#F3C24F';
-      ctx.fillRect(-5.2, -1.2, 10.4, 2.6);
-    }
-
-    // Nose indicator dot
-    ctx.fillStyle = this.satTargetOrbit === 0 ? '#F3C24F' : '#4D78A8';
-    ctx.beginPath();
-    ctx.arc(0, -3.8, 2.4, 0, TAU);
-    ctx.fill();
-
-    // Tail ribbon knot
-    ctx.fillStyle = knotColor;
-    ctx.fillRect(-2.4, 7.6, 4.8, 2.2);
-
-    ctx.restore();
-  }
-
-  private fillRoundedRect(
-    ctx: CanvasRenderingContext2D,
-    x: number,
-    y: number,
-    w: number,
-    h: number,
-    r: number,
-    fillStyle: string
-  ): void {
-    const radius = Math.min(r, w / 2, h / 2);
-    ctx.fillStyle = fillStyle;
-    ctx.beginPath();
-    ctx.moveTo(x + radius, y);
-    ctx.lineTo(x + w - radius, y);
-    ctx.quadraticCurveTo(x + w, y, x + w, y + radius);
-    ctx.lineTo(x + w, y + h - radius);
-    ctx.quadraticCurveTo(x + w, y + h, x + w - radius, y + h);
-    ctx.lineTo(x + radius, y + h);
-    ctx.quadraticCurveTo(x, y + h, x, y + h - radius);
-    ctx.lineTo(x, y + radius);
-    ctx.quadraticCurveTo(x, y, x + radius, y);
+    ctx.moveTo(-4.2, 10.5);
+    ctx.quadraticCurveTo(0, 10.5 + 12 * flameFlicker, 4.2, 10.5);
     ctx.closePath();
     ctx.fill();
+
+    ctx.fillStyle = '#FFF799';
+    ctx.beginPath();
+    ctx.moveTo(-2.4, 10.5);
+    ctx.quadraticCurveTo(0, 10.5 + 7.5 * flameFlicker, 2.4, 10.5);
+    ctx.closePath();
+    ctx.fill();
+
+    // Swept left & right rocket fins
+    ctx.fillStyle = accentDeep;
+    ctx.beginPath();
+    ctx.moveTo(-6.2, 2.5);
+    ctx.quadraticCurveTo(-13.5, 5.5, -12.2, 13);
+    ctx.quadraticCurveTo(-8.4, 10.2, -5.5, 9.5);
+    ctx.closePath();
+    ctx.fill();
+
+    ctx.fillStyle = accentBright;
+    ctx.beginPath();
+    ctx.moveTo(6.2, 2.5);
+    ctx.quadraticCurveTo(13.5, 5.5, 12.2, 13);
+    ctx.quadraticCurveTo(8.4, 10.2, 5.5, 9.5);
+    ctx.closePath();
+    ctx.fill();
+
+    // Nozzle base collar
+    ctx.fillStyle = '#5C3A5E';
+    ctx.beginPath();
+    ctx.roundRect(-4.6, 8.8, 9.2, 2.8, 1.4);
+    ctx.fill();
+
+    // Glossy plump teardrop rocket body
+    const bodyGrad = ctx.createLinearGradient(-7.5, 0, 7.5, 0);
+    bodyGrad.addColorStop(0, hullLight);
+    bodyGrad.addColorStop(0.58, '#F0F4FF');
+    bodyGrad.addColorStop(1, hullShade);
+
+    ctx.fillStyle = bodyGrad;
+    ctx.beginPath();
+    ctx.moveTo(0, -15);
+    ctx.bezierCurveTo(9, -8.5, 8.8, 4.5, 5.2, 9.5);
+    ctx.lineTo(-5.2, 9.5);
+    ctx.bezierCurveTo(-8.8, 4.5, -9, -8.5, 0, -15);
+    ctx.closePath();
+    ctx.fill();
+
+    // Clipped bright nose cone & glossy side specular
+    ctx.save();
+    ctx.beginPath();
+    ctx.moveTo(0, -15);
+    ctx.bezierCurveTo(9, -8.5, 8.8, 4.5, 5.2, 9.5);
+    ctx.lineTo(-5.2, 9.5);
+    ctx.bezierCurveTo(-8.8, 4.5, -9, -8.5, 0, -15);
+    ctx.closePath();
+    ctx.clip();
+
+    const noseGrad = ctx.createLinearGradient(-6, -15, 6, -6);
+    noseGrad.addColorStop(0, accentBright);
+    noseGrad.addColorStop(1, accentDeep);
+    ctx.fillStyle = noseGrad;
+    ctx.beginPath();
+    ctx.moveTo(-10, -16);
+    ctx.lineTo(10, -16);
+    ctx.lineTo(10, -6.4);
+    ctx.quadraticCurveTo(0, -4.4, -10, -6.4);
+    ctx.closePath();
+    ctx.fill();
+
+    // Glossy left highlight streak
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.55)';
+    ctx.beginPath();
+    ctx.ellipse(-3.4, -1.5, 1.6, 7.2, 0.14, 0, TAU);
+    ctx.fill();
+    ctx.restore();
+
+    // Crisp rocket body outline
+    ctx.strokeStyle = '#252161';
+    ctx.lineWidth = 1.2;
+    ctx.beginPath();
+    ctx.moveTo(0, -15);
+    ctx.bezierCurveTo(9, -8.5, 8.8, 4.5, 5.2, 9.5);
+    ctx.lineTo(-5.2, 9.5);
+    ctx.bezierCurveTo(-8.8, 4.5, -9, -8.5, 0, -15);
+    ctx.closePath();
+    ctx.stroke();
+
+    // Glowing cyan glass porthole window
+    ctx.fillStyle = '#382B70';
+    ctx.beginPath();
+    ctx.arc(0, -0.5, 4.4, 0, TAU);
+    ctx.fill();
+
+    const winGrad = ctx.createRadialGradient(-1, -1.6, 0.5, 0, -0.5, 3.4);
+    winGrad.addColorStop(0, '#E8FFFF');
+    winGrad.addColorStop(0.4, glassCore);
+    winGrad.addColorStop(1, glassEdge);
+    ctx.fillStyle = winGrad;
+    ctx.beginPath();
+    ctx.arc(0, -0.5, 3.3, 0, TAU);
+    ctx.fill();
+
+    // Porthole white glint
+    ctx.fillStyle = '#FFFFFF';
+    ctx.beginPath();
+    ctx.arc(-1.1, -1.7, 1.05, 0, TAU);
+    ctx.fill();
+
+    // Center front stabilizer fin
+    ctx.fillStyle = accentBright;
+    ctx.beginPath();
+    ctx.moveTo(0, 3.5);
+    ctx.quadraticCurveTo(1.8, 8.5, 0, 12.2);
+    ctx.quadraticCurveTo(-1.8, 8.5, 0, 3.5);
+    ctx.closePath();
+    ctx.fill();
+
+    ctx.restore();
   }
 }

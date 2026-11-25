@@ -28,10 +28,10 @@ export const GameHud: React.FC<GameHudProps> = ({
   const isLowTime = hud.timeRemaining !== null && hud.timeRemaining <= 5;
 
   return (
-    <div className="absolute inset-0 z-20 flex flex-col justify-between pointer-events-none px-4 py-4 sm:px-7 sm:py-6">
-      {/* Top Paper-Cutout Perimeter HUD */}
+    <div className="absolute inset-0 z-20 flex flex-col justify-between pointer-events-none px-3.5 py-3.5 sm:px-6 sm:py-5">
+      {/* TOP COSMIC GLOSSY HUD (Matches Gameplay Reference Mockup) */}
       <header className="w-full max-w-2xl mx-auto flex items-start justify-between gap-2">
-        {/* Left: Cream paper circular Pause button */}
+        {/* Left: Solid Coral-Red Circular Pause Button with Cyan Rim */}
         <button
           type="button"
           onClick={(e) => {
@@ -39,27 +39,27 @@ export const GameHud: React.FC<GameHudProps> = ({
             onPause();
           }}
           aria-label="Pause game"
-          className="pointer-events-auto w-11 h-11 rounded-full bg-[#F5EFE2] hover:bg-[#FAF6EC] text-[#C75C3B] paper-tag-shadow active:scale-95 transition-transform flex items-center justify-center shrink-0 focus-visible:outline-2 focus-visible:outline-[#F3C24F]"
+          className="pointer-events-auto relative w-11 h-11 rounded-full bg-[#FF5224] border-2 border-[#66E5FF] shadow-[0_3px_0_#B82A08,0_4px_10px_rgba(5,8,34,0.5)] text-white active:scale-95 hover:bg-[#FF643B] transition-all flex items-center justify-center shrink-0 focus-visible:outline-2 focus-visible:outline-[#FFD426]"
         >
           <Pause className="w-5 h-5 fill-current" />
         </button>
 
-        {/* Center: Cream paper hand-cut Level, Star & Timer Tag */}
+        {/* Center: Solid Deep Indigo Level & Star Pill with Gold Rim */}
         <div className="flex flex-col items-center gap-1.5 min-w-0">
-          <div className="bg-[#F5EFE2] paper-tag-shadow rounded-2xl px-4 py-2 flex flex-col items-center text-center min-w-0">
-            <div className="flex items-baseline gap-1.5 text-sm sm:text-base leading-none">
-              <span className="font-display font-semibold text-[#27324F]">level</span>
-              <span className="font-mono-num font-bold text-[#C75C3B]">
+          <div className="rounded-2xl px-3.5 py-1.5 bg-[#121B6B]/92 border-2 border-[#FFD94A] shadow-[0_4px_12px_rgba(4,8,36,0.5)] flex flex-col items-center text-center min-w-0">
+            <div className="flex items-baseline gap-1 text-xs sm:text-sm leading-none whitespace-nowrap">
+              <span className="font-display font-bold text-white">level</span>
+              <span className="font-mono-num font-bold text-[#FFD426]">
                 {String(level.id).padStart(2, '0')}
               </span>
-              <span aria-hidden="true" className="text-[#B8AB96] text-xs mx-0.5">·</span>
-              <span className="font-display font-semibold text-[#27324F] text-xs sm:text-sm truncate max-w-[100px] sm:max-w-[170px]">
+              <span aria-hidden="true" className="text-white/80 mx-0.5">-</span>
+              <span className="font-display font-bold text-[#FFBE3B] truncate max-w-[115px] sm:max-w-[180px]">
                 {level.name}
               </span>
             </div>
 
-            {/* Crisp Gold-Foil Star Slots + Optional Countdown Timer */}
-            <div className="flex items-center gap-2.5 mt-1.5">
+            {/* Golden Star Slots + Optional Countdown Timer */}
+            <div className="flex items-center gap-2 mt-1">
               <div
                 className="flex items-center gap-1"
                 aria-label={`${hud.starsCollected} of ${hud.totalStars} stars collected`}
@@ -71,13 +71,15 @@ export const GameHud: React.FC<GameHudProps> = ({
                       key={idx}
                       viewBox="0 0 20 20"
                       className={`w-4 h-4 transition-transform duration-200 ${
-                        collected ? 'scale-110 text-[#F3C24F]' : 'scale-100 text-[#D4C9B6]'
+                        collected
+                          ? 'scale-110 text-[#FFD93B]'
+                          : 'scale-100 text-[#2E3878]'
                       }`}
                     >
                       <path
                         fill="currentColor"
-                        stroke={collected ? '#B67D1B' : 'none'}
-                        strokeWidth="0.8"
+                        stroke={collected ? '#FF8800' : '#5869B8'}
+                        strokeWidth="1.2"
                         d="M10 1.5l2.1 5.9 6.2.4-4.8 3.9 1.6 6.1L10 14.3l-5.1 3.5 1.6-6.1-4.8-3.9 6.2-.4L10 1.5z"
                       />
                     </svg>
@@ -92,12 +94,12 @@ export const GameHud: React.FC<GameHudProps> = ({
                       ? 'Timer stopped by Nano Stopper'
                       : `${Math.ceil(hud.timeRemaining ?? 0)} seconds remaining`
                   }
-                  className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-mono-num font-bold ${
+                  className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-mono-num font-bold border ${
                     hud.timerDisabled
-                      ? 'bg-[#E9E0F7] text-[#66469A]'
+                      ? 'bg-[#3C2282] border-[#B682FF] text-[#E6CEFF]'
                       : isLowTime
-                        ? 'bg-[#C75C3B] text-[#FAF3E6]'
-                        : 'bg-[#E8DEC9] text-[#27324F]'
+                        ? 'bg-[#D92811] border-[#FFB273] text-white animate-pulse'
+                        : 'bg-[#101C6B] border-[#42B8FF] text-[#8CEEFF]'
                   }`}
                 >
                   <Clock className="w-3 h-3" />
@@ -111,17 +113,17 @@ export const GameHud: React.FC<GameHudProps> = ({
             </div>
           </div>
 
-          {/* Active Power-Up / Craft Status Strip (Shield or Heavy outer guard) */}
+          {/* Active Power-Up / Craft Status Chips */}
           {(hud.shieldActive || activeSat.outerImmune) && (
             <div className="flex items-center gap-1.5">
               {hud.shieldActive && (
-                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-[#4D78A8] text-[#FAF3E6] text-[10px] font-display font-bold paper-tag-shadow">
-                  <Shield className="w-3 h-3 text-[#A9DAF3]" />
+                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-[#1668E8] border border-[#8CEEFF] text-white text-[10px] font-display font-bold">
+                  <Shield className="w-3 h-3 text-[#FFE45E]" />
                   SHIELD ACTIVE
                 </span>
               )}
               {activeSat.outerImmune && (
-                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-[#F3C24F] text-[#27324F] text-[10px] font-display font-bold paper-tag-shadow">
+                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-[#FFC414] border border-[#FFF4A3] text-[#4A1C00] text-[10px] font-display font-bold">
                   HEAVY · OUTER GUARD
                 </span>
               )}
@@ -129,7 +131,7 @@ export const GameHud: React.FC<GameHudProps> = ({
           )}
         </div>
 
-        {/* Right: Cream paper circular Music & Sound toggles */}
+        {/* Right: Solid Royal-Blue Circular Music & Sound Buttons with Cyan Rims */}
         <div className="flex items-center gap-1.5 shrink-0">
           <button
             type="button"
@@ -139,17 +141,15 @@ export const GameHud: React.FC<GameHudProps> = ({
             }}
             aria-label={musicMuted ? 'Enable music' : 'Mute music'}
             aria-pressed={!musicMuted}
-            className="pointer-events-auto relative w-11 h-11 rounded-full bg-[#F5EFE2] hover:bg-[#FAF6EC] paper-tag-shadow active:scale-95 transition-transform flex items-center justify-center focus-visible:outline-2 focus-visible:outline-[#F3C24F]"
+            className="pointer-events-auto relative w-11 h-11 rounded-full bg-[#1668E8] border-2 border-[#7CEBFF] shadow-[0_3px_0_#0A3C9E,0_4px_10px_rgba(5,8,34,0.5)] active:scale-95 hover:bg-[#2376F5] transition-all flex items-center justify-center focus-visible:outline-2 focus-visible:outline-[#FFD426]"
           >
             <Music
-              className={`w-4 h-4 ${
-                musicMuted ? 'text-[#C75C3B] opacity-70' : 'text-[#27324F]'
-              }`}
+              className={`w-5 h-5 text-white ${musicMuted ? 'opacity-60' : 'opacity-100'}`}
             />
             {musicMuted && (
               <span
                 aria-hidden="true"
-                className="absolute w-5 h-[2px] bg-[#C75C3B] -rotate-45 rounded-full"
+                className="absolute w-6 h-[2.5px] bg-[#FF5224] border border-white -rotate-45 rounded-full"
               />
             )}
           </button>
@@ -162,49 +162,49 @@ export const GameHud: React.FC<GameHudProps> = ({
             }}
             aria-label={muted ? 'Unmute sound effects' : 'Mute sound effects'}
             aria-pressed={!muted}
-            className="pointer-events-auto w-11 h-11 rounded-full bg-[#F5EFE2] hover:bg-[#FAF6EC] paper-tag-shadow active:scale-95 transition-transform flex items-center justify-center focus-visible:outline-2 focus-visible:outline-[#F3C24F]"
+            className="pointer-events-auto w-11 h-11 rounded-full bg-[#1668E8] border-2 border-[#7CEBFF] shadow-[0_3px_0_#0A3C9E,0_4px_10px_rgba(5,8,34,0.5)] active:scale-95 hover:bg-[#2376F5] transition-all flex items-center justify-center focus-visible:outline-2 focus-visible:outline-[#FFD426]"
           >
             {muted ? (
-              <VolumeX className="w-4 h-4 text-[#C75C3B]" />
+              <VolumeX className="w-5 h-5 text-[#FFE0D6]" />
             ) : (
-              <Volume2 className="w-4 h-4 text-[#27324F]" />
+              <Volume2 className="w-5 h-5 text-white" />
             )}
           </button>
         </div>
       </header>
 
-      {/* Bottom Quiet Tutorial Prompt (Levels 1 & 2) + Flight State Readout */}
-      <footer className="w-full max-w-xl mx-auto flex flex-col items-center gap-2 pb-1">
+      {/* BOTTOM TUTORIAL CARD (Levels 1 & 2) + CRISP COSMIC FLIGHT READOUT */}
+      <footer className="w-full max-w-xl mx-auto flex flex-col items-center gap-1.5 pb-1">
         {level.id === 1 && (
           <div
             aria-live="polite"
-            className="px-4 py-2 rounded-2xl bg-[#F5EFE2]/95 border border-dashed border-[#B5A389] paper-tag-shadow text-center max-w-[300px] sm:max-w-sm transition-opacity duration-200"
+            className="cosmic-glass-card px-4 py-2 rounded-2xl text-center max-w-[310px] sm:max-w-sm transition-opacity duration-200"
           >
             {hud.portalActive ? (
               <>
-                <p className="text-xs font-display font-bold text-[#3D7A52]">
+                <p className="text-xs font-display font-bold text-[#6CFFBA]">
                   Portal open on the {hud.portalOrbit === 0 ? 'inner' : 'outer'} ring
                 </p>
-                <p className="text-[11px] font-semibold text-[#5E5447] mt-0.5">
+                <p className="text-[11px] font-semibold text-[#C8E4FF] mt-0.5">
                   Tap to align your orbit and glide right through
                 </p>
               </>
             ) : hud.shiftCount === 0 ? (
               <>
-                <p className="text-xs font-display font-bold text-[#27324F]">
+                <p className="text-xs font-display font-bold text-white">
                   Tap anywhere to shift between orbits
                 </p>
-                <p className="text-[11px] font-semibold text-[#5E5447] mt-0.5">
+                <p className="text-[11px] font-semibold text-[#7CE7FF] mt-0.5">
                   Inner ring moves fast · Outer ring moves slow
                 </p>
               </>
             ) : (
               <>
-                <p className="text-xs font-display font-bold text-[#27324F]">
+                <p className="text-xs font-display font-bold text-[#FFD426]">
                   Collect all {hud.totalStars} stars to open the portal
                 </p>
-                <p className="text-[11px] font-semibold text-[#5E5447] mt-0.5">
-                  Dodge crumpled rocks by shifting lanes early
+                <p className="text-[11px] font-semibold text-[#C8E4FF] mt-0.5">
+                  Dodge space hazards by shifting lanes early
                 </p>
               </>
             )}
@@ -214,23 +214,23 @@ export const GameHud: React.FC<GameHudProps> = ({
         {level.id === 2 && (
           <div
             aria-live="polite"
-            className="px-4 py-2 rounded-2xl bg-[#F5EFE2]/95 border border-dashed border-[#B5A389] paper-tag-shadow text-center max-w-[300px] sm:max-w-sm transition-opacity duration-200"
+            className="cosmic-glass-card px-4 py-2 rounded-2xl text-center max-w-[310px] sm:max-w-sm transition-opacity duration-200"
           >
             {hud.portalActive ? (
-              <p className="text-xs font-display font-bold text-[#3D7A52]">
+              <p className="text-xs font-display font-bold text-[#6CFFBA]">
                 Portal open — shift to the {hud.portalOrbit === 0 ? 'inner' : 'outer'} ring
               </p>
             ) : hud.shiftCount === 0 ? (
               <>
-                <p className="text-xs font-display font-bold text-[#27324F]">
+                <p className="text-xs font-display font-bold text-white">
                   Time your tap before reaching obstacles
                 </p>
-                <p className="text-[11px] font-semibold text-[#5E5447] mt-0.5">
+                <p className="text-[11px] font-semibold text-[#7CE7FF] mt-0.5">
                   Use the inner ring to speed up or outer ring to wait
                 </p>
               </>
             ) : (
-              <p className="text-xs font-display font-semibold text-[#27324F]">
+              <p className="text-xs font-display font-bold text-[#FFD426]">
                 Fewer orbit shifts earn up to 3 mastery stars
               </p>
             )}
@@ -238,32 +238,30 @@ export const GameHud: React.FC<GameHudProps> = ({
         )}
 
         {level.id > 2 && (
-          <div className="text-xs tracking-wide text-center font-semibold">
+          <div className="text-sm sm:text-base tracking-wide text-center font-display font-bold drop-shadow-[0_2px_4px_rgba(4,8,34,0.95)]">
             {hud.portalActive ? (
-              <span className="text-[#F3C24F]">
+              <span className="text-[#6CFFBA]">
                 Portal open on {hud.portalOrbit === 0 ? 'Inner' : 'Outer'} ring
               </span>
             ) : (
-              <span className="text-[#E6DAC4]/90">
+              <span className="text-white">
                 Collect {remaining} {remaining === 1 ? 'star' : 'stars'} to open portal
               </span>
             )}
           </div>
         )}
 
-        <div className="flex items-center justify-center gap-2.5 text-[11px] sm:text-xs font-mono-num">
-          <span className={isInner ? 'text-[#F3C24F] font-bold' : 'text-[#A8C8DF] font-bold'}>
+        <div className="flex items-center justify-center gap-2 text-xs sm:text-sm font-display font-bold drop-shadow-[0_2px_4px_rgba(4,8,34,0.95)]">
+          <span className={isInner ? 'text-[#FFD426]' : 'text-[#66E5FF]'}>
             {isInner ? 'INNER · FAST' : 'OUTER · SLOW'}
           </span>
 
           {hud.inGravityWell && (
             <>
-              <span aria-hidden="true" className="text-[#8B879E]">·</span>
+              <span aria-hidden="true" className="text-white/60">-</span>
               <span
                 className={
-                  hud.gravityMode === 'boost'
-                    ? 'text-[#E5C6F5] font-bold'
-                    : 'text-[#B5D6EB] font-bold'
+                  hud.gravityMode === 'boost' ? 'text-[#F09EFF]' : 'text-[#7CEBFF]'
                 }
               >
                 {hud.gravityMode === 'boost' ? 'GRAVITY SLINGSHOT' : 'GRAVITY DRAG'}
@@ -271,8 +269,8 @@ export const GameHud: React.FC<GameHudProps> = ({
             </>
           )}
 
-          <span aria-hidden="true" className="text-[#8B879E]">·</span>
-          <span className="text-[#D4C9B6]">Shifts {hud.shiftCount}</span>
+          <span aria-hidden="true" className="text-white/75">-</span>
+          <span className="text-white font-mono-num">Shifts {hud.shiftCount}</span>
         </div>
       </footer>
     </div>

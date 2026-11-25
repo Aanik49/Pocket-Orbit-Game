@@ -51,58 +51,61 @@ export const SpaceStationModal: React.FC<SpaceStationModalProps> = ({
       role="dialog"
       aria-modal="true"
       aria-label="Space Station Shop"
-      className="fixed inset-0 z-40 bg-[#14182B]/72 flex items-center justify-center p-4 sm:p-6"
+      className="fixed inset-0 z-40 bg-[#040724]/78 backdrop-blur-[2px] flex items-center justify-center p-4 pt-7"
       onClick={onClose}
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        className="animate-modal-enter paper-cream-surface paper-cutout-shadow w-full max-w-lg rounded-3xl border-[3px] border-[#27324F] p-4 sm:p-6 flex flex-col max-h-[90dvh] overflow-hidden"
+        className="animate-modal-enter station-modal-frame relative w-full max-w-[356px] px-3.5 pb-4 pt-7 flex flex-col max-h-[82dvh]"
       >
-        {/* Header with live Stars & Rockets balances */}
-        <div className="shrink-0 flex items-start justify-between gap-3 pb-3 border-b-2 border-dashed border-[#D3C4AA]">
-          <div className="flex items-center gap-2.5">
-            <div className="w-10 h-10 rounded-2xl bg-[#4D78A8] text-[#FAF3E6] flex items-center justify-center shadow-[0_3px_0_#34567D] shrink-0">
-              <Radio className="w-5 h-5" />
+        {/* Centered Floating Solid-Blue Header Pill (full width container prevents text overflow) */}
+        <div className="pointer-events-none absolute -top-5 inset-x-0 flex justify-center z-20">
+          <div className="station-header-pill w-fit h-10 pl-1.5 pr-4 rounded-full inline-flex items-center gap-2 whitespace-nowrap">
+            <div className="w-8 h-8 rounded-full bg-[#0F52D6] border-2 border-[#7CCBFF] flex items-center justify-center text-white shrink-0">
+              <Radio className="w-4 h-4 stroke-[2.5]" />
             </div>
-            <div>
-              <h2 className="font-display text-xl font-bold text-[#27324F] leading-tight">
-                Space Station
-              </h2>
-              <div className="flex items-center gap-3 mt-1">
-                <span className="inline-flex items-center gap-1 font-mono-num text-xs font-bold text-[#27324F]">
-                  <PaperStarIcon className="w-4 h-4" /> {lobbyStars}
-                </span>
-                <span className="inline-flex items-center gap-1 font-mono-num text-xs font-bold text-[#27324F]">
-                  <PaperRocketIcon className="w-4 h-4" /> {lobbyRockets}
-                </span>
-              </div>
-            </div>
+            <h2 className="font-display text-base sm:text-lg font-extrabold text-white leading-none drop-shadow-[0_1.5px_0_#072578]">
+              Space Station
+            </h2>
           </div>
-
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label="Close Space Station"
-            className="paper-btn-cream w-9 h-9 rounded-full flex items-center justify-center shrink-0"
-          >
-            <X className="w-4 h-4 text-[#27324F]" />
-          </button>
         </div>
 
-        {/* Category Tabs: Satellites vs Shields */}
+        {/* Uniform Compact Solid Orange-Red Close Button */}
+        <button
+          type="button"
+          onClick={onClose}
+          aria-label="Close Space Station"
+          className="glossy-close-orange absolute -top-2.5 -right-2.5 z-30 w-8 h-8 rounded-full flex items-center justify-center transition-transform focus-visible:outline-2 focus-visible:outline-[#38E8FF]"
+        >
+          <X className="w-4 h-4 stroke-[3]" />
+        </button>
+
+        {/* Live Stars & Rockets Balances Row (matches mockup below header) */}
+        <div className="shrink-0 flex items-center justify-center gap-4 pb-2">
+          <span className="inline-flex items-center gap-1 font-mono-num text-sm font-extrabold text-[#17275C]">
+            <PaperStarIcon className="w-4 h-4" />
+            <span>{lobbyStars.toLocaleString()}</span>
+          </span>
+          <span className="inline-flex items-center gap-1 font-mono-num text-sm font-extrabold text-[#17275C]">
+            <PaperRocketIcon className="w-4 h-4" />
+            <span>{lobbyRockets.toLocaleString()}</span>
+          </span>
+        </div>
+
+        {/* Segmented Tabs: Satellites (4) vs Shields (N) */}
         <div
           role="tablist"
-          className="shrink-0 grid grid-cols-2 gap-2 mt-3.5 p-1.5 rounded-2xl bg-[#E7DCC7] border border-[#D4C5AA]"
+          className="shrink-0 grid grid-cols-2 gap-1.5 p-1 rounded-2xl bg-[#EEDAC0] border border-[#DEC299]"
         >
           <button
             type="button"
             role="tab"
             aria-selected={tab === 'satellites'}
             onClick={() => setTab('satellites')}
-            className={`h-10 rounded-xl font-display font-bold text-sm transition-all ${
+            className={`h-8.5 rounded-xl font-display font-bold text-xs sm:text-sm transition-all ${
               tab === 'satellites'
-                ? 'bg-[#4D78A8] text-[#FAF3E6] shadow-[0_2px_0_#34567D]'
-                : 'text-[#3F485E] hover:bg-[#F5EFE2]/70'
+                ? 'glossy-btn-blue'
+                : 'text-[#1D2D66] hover:bg-[#FAF0DD]'
             }`}
           >
             Satellites (4)
@@ -112,10 +115,10 @@ export const SpaceStationModal: React.FC<SpaceStationModalProps> = ({
             role="tab"
             aria-selected={tab === 'shields'}
             onClick={() => setTab('shields')}
-            className={`h-10 rounded-xl font-display font-bold text-sm transition-all ${
+            className={`h-8.5 rounded-xl font-display font-bold text-xs sm:text-sm transition-all ${
               tab === 'shields'
-                ? 'bg-[#4D78A8] text-[#FAF3E6] shadow-[0_2px_0_#34567D]'
-                : 'text-[#3F485E] hover:bg-[#F5EFE2]/70'
+                ? 'glossy-btn-blue'
+                : 'text-[#1D2D66] hover:bg-[#FAF0DD]'
             }`}
           >
             Shields ({shieldsOwned})
@@ -124,7 +127,7 @@ export const SpaceStationModal: React.FC<SpaceStationModalProps> = ({
 
         {/* Tab Content */}
         {tab === 'satellites' ? (
-          <div className="min-h-0 flex-1 overflow-y-auto mt-3.5 flex flex-col gap-2.5 pr-0.5">
+          <div className="min-h-0 flex-1 overflow-y-auto mt-2.5 flex flex-col gap-2 pr-0.5">
             {SATELLITES.map((sat) => {
               const owned = ownedSatellites.includes(sat.id);
               const equipped = selectedSatellite === sat.id;
@@ -134,44 +137,44 @@ export const SpaceStationModal: React.FC<SpaceStationModalProps> = ({
               return (
                 <div
                   key={sat.id}
-                  className={`rounded-2xl border-2 p-3 flex items-center gap-3 ${
+                  className={`rounded-2xl border-2 p-2.5 flex items-center gap-2.5 ${
                     equipped
-                      ? 'bg-[#FFF5D4] border-[#C75C3B] shadow-[0_3px_0_rgba(199,92,59,0.28)]'
-                      : 'bg-[#FCF8EE] border-[#D4C5AA] shadow-[0_2px_0_rgba(39,50,79,0.1)]'
+                      ? 'bg-[#FFE6A0] border-[#F08814]'
+                      : 'bg-[#FFFDF8] border-[#E5D0AE]'
                   }`}
                 >
-                  <SatelliteIllustration id={sat.id} className="w-14 h-14 shrink-0" />
+                  <SatelliteIllustration id={sat.id} className="w-11 h-11 shrink-0" />
 
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-1.5 flex-wrap">
-                      <h3 className="font-display font-bold text-sm sm:text-base text-[#27324F]">
+                      <h3 className="font-display font-extrabold text-xs sm:text-sm text-[#13245C] leading-tight">
                         {sat.name}
                       </h3>
-                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#EAE0CE] text-[#5E5447]">
+                      <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-[#DCEAFF] text-[#174CA6]">
                         {sat.tagline}
                       </span>
                     </div>
-                    <p className="text-[11px] sm:text-xs font-semibold text-[#5E5447] mt-1 leading-snug">
+                    <p className="text-[10px] sm:text-[11px] font-semibold text-[#3B4B75] mt-0.5 leading-snug">
                       {sat.description}
                     </p>
                   </div>
 
                   <div className="shrink-0">
                     {equipped ? (
-                      <span className="inline-flex items-center gap-1 px-3 h-10 rounded-xl bg-[#5F9E73] text-[#FAF3E6] text-xs font-display font-bold">
-                        <Check className="w-3.5 h-3.5" /> Active
+                      <span className="glossy-btn-green inline-flex items-center gap-1 px-2.5 h-8 rounded-full text-[11px] font-display font-bold">
+                        <Check className="w-3 h-3 stroke-[3]" /> Active
                       </span>
                     ) : owned ? (
                       <button
                         type="button"
                         onClick={() => onEquipSatellite(sat.id)}
-                        className="paper-btn-denim h-10 px-3.5 rounded-xl text-xs font-display font-bold whitespace-nowrap"
+                        className="glossy-btn-blue h-8 px-3 rounded-full text-[11px] font-display font-bold whitespace-nowrap"
                       >
-                        Equip
+                        Select
                       </button>
                     ) : !unlocked ? (
-                      <div className="px-2.5 py-1.5 rounded-xl bg-[#E4DAC6] border border-[#CFC2AA] text-[#6E6354] text-[10px] font-display font-bold text-center leading-tight flex flex-col items-center gap-0.5">
-                        <Lock className="w-3.5 h-3.5" />
+                      <div className="px-2 py-1 rounded-xl bg-[#EAE0CE] border border-[#D4C3A3] text-[#586280] text-[9px] font-display font-bold text-center leading-tight flex flex-col items-center gap-0.5">
+                        <Lock className="w-3 h-3" />
                         <span>Sector {sat.unlockSector}</span>
                       </div>
                     ) : (
@@ -179,13 +182,13 @@ export const SpaceStationModal: React.FC<SpaceStationModalProps> = ({
                         type="button"
                         disabled={!canAfford}
                         onClick={() => onBuySatellite(sat.id)}
-                        className={`h-10 px-3 rounded-xl text-xs font-display font-bold flex items-center gap-1 whitespace-nowrap ${
+                        className={`h-8 px-2.5 rounded-full text-[11px] font-display font-extrabold flex items-center gap-1 whitespace-nowrap ${
                           canAfford
-                            ? 'paper-btn-gold'
-                            : 'bg-[#E4DAC6] text-[#8B7F6E] cursor-not-allowed border border-[#CFC2AA]'
+                            ? 'glossy-btn-gold'
+                            : 'bg-[#E6DAC4] text-[#7A746A] cursor-not-allowed border border-[#D2C2A8]'
                         }`}
                       >
-                        <PaperStarIcon className="w-4 h-4" />
+                        <PaperStarIcon className="w-3.5 h-3.5" />
                         <span>{sat.costStars}</span>
                       </button>
                     )}
@@ -195,107 +198,103 @@ export const SpaceStationModal: React.FC<SpaceStationModalProps> = ({
             })}
           </div>
         ) : (
-          <div className="mt-4 flex flex-col gap-4">
-            <div className="rounded-2xl bg-[#FCF8EE] border-2 border-[#D4C5AA] p-4 shadow-[0_3px_0_rgba(39,50,79,0.12)]">
-              <div className="flex items-center gap-3.5">
-                <div className="w-16 h-16 rounded-2xl bg-[#232942] flex items-center justify-center shrink-0">
-                  <PaperShieldIcon className="w-11 h-11" />
+          <div className="mt-2.5 flex flex-col gap-2.5">
+            {/* Orbit Shield Card (Matches Space Station Mockup 1:1) */}
+            <div className="rounded-2xl bg-[#FFFDF8] border-2 border-[#E5D0AE] p-3">
+              <div className="flex items-start gap-2.5">
+                <div className="w-12 h-12 rounded-2xl bg-[#0D1A5C] border-2 border-[#1668E8] flex items-center justify-center shrink-0 p-1.5">
+                  <PaperShieldIcon className="w-8 h-8" />
                 </div>
                 <div className="min-w-0 flex-1">
-                  <div className="flex items-center justify-between gap-2">
-                    <h3 className="font-display font-bold text-lg text-[#27324F]">
+                  <div className="flex items-center justify-between gap-1.5">
+                    <h3 className="font-display font-extrabold text-sm sm:text-base text-[#13245C]">
                       Orbit Shield
                     </h3>
-                    <span className="font-mono-num text-xs font-bold px-2.5 py-0.5 rounded-full bg-[#DCEAF5] text-[#2B5982]">
+                    <span className="font-mono-num text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-[#CBE2FF] text-[#0D3C96]">
                       Owned: {shieldsOwned}
                     </span>
                   </div>
-                  <p className="text-xs font-semibold text-[#5E5447] mt-1 leading-relaxed">
+                  <p className="text-[11px] font-semibold text-[#3B4B75] mt-1 leading-snug">
                     Protects your craft from every obstacle on both inner and outer orbits. Up to 1 shield can be armed per level.
                   </p>
-                  <div className="inline-flex items-center gap-1 mt-2 text-xs font-mono-num font-bold text-[#C75C3B]">
-                    <PaperRocketIcon className="w-4 h-4" />
+                  <div className="inline-flex items-center gap-1 mt-1.5 text-[11px] font-mono-num font-extrabold text-[#DF2E14]">
+                    <PaperRocketIcon className="w-3.5 h-3.5" />
                     <span>{SHIELD_COST_ROCKETS} Rockets each</span>
                   </div>
                 </div>
               </div>
+            </div>
 
-              {/* Quantity controls: Manual (-) / (+) AND MAX button */}
-              <div className="mt-4 pt-4 border-t-2 border-dashed border-[#D8CBB4] flex flex-col gap-3">
-                <div className="flex items-center justify-between gap-2">
-                  <span className="font-display font-bold text-sm text-[#27324F]">
-                    Select Quantity
+            {/* Select Quantity + Solid Coral Buy Button (Matches Mockup) */}
+            <div className="rounded-2xl bg-[#FFFDF8] border-2 border-[#E5D0AE] p-3 flex flex-col gap-2.5">
+              <div className="flex items-center justify-between gap-2">
+                <span className="font-display font-extrabold text-xs sm:text-sm text-[#13245C] leading-tight">
+                  Select Quantity
+                </span>
+
+                <div className="flex items-center gap-1.5">
+                  <button
+                    type="button"
+                    disabled={effectiveQty <= 1}
+                    onClick={() => setShieldQty((q) => Math.max(1, q - 1))}
+                    aria-label="Decrease shield quantity"
+                    className="glossy-btn-cream w-8 h-8 rounded-full flex items-center justify-center disabled:opacity-45"
+                  >
+                    <Minus className="w-3.5 h-3.5 stroke-[2.8]" />
+                  </button>
+
+                  <span className="font-mono-num font-extrabold text-base text-[#13245C] w-6 text-center">
+                    {effectiveQty}
                   </span>
 
-                  <div className="flex items-center gap-2">
-                    <button
-                      type="button"
-                      disabled={effectiveQty <= 1}
-                      onClick={() => setShieldQty((q) => Math.max(1, q - 1))}
-                      aria-label="Decrease shield quantity"
-                      className="paper-btn-cream w-9 h-9 rounded-xl flex items-center justify-center disabled:opacity-45"
-                    >
-                      <Minus className="w-4 h-4" />
-                    </button>
+                  <button
+                    type="button"
+                    disabled={effectiveQty >= maxAffordableShields}
+                    onClick={() =>
+                      setShieldQty((q) => Math.min(maxAffordableShields, Math.max(1, q) + 1))
+                    }
+                    aria-label="Increase shield quantity"
+                    className="glossy-btn-blue w-8 h-8 rounded-full flex items-center justify-center disabled:opacity-45"
+                  >
+                    <Plus className="w-3.5 h-3.5 stroke-[2.8]" />
+                  </button>
 
-                    <span className="font-mono-num font-bold text-base text-[#27324F] w-10 text-center">
-                      {effectiveQty}
-                    </span>
-
-                    <button
-                      type="button"
-                      disabled={effectiveQty >= maxAffordableShields}
-                      onClick={() =>
-                        setShieldQty((q) => Math.min(maxAffordableShields, Math.max(1, q) + 1))
-                      }
-                      aria-label="Increase shield quantity"
-                      className="paper-btn-denim w-9 h-9 rounded-xl flex items-center justify-center disabled:opacity-45"
-                    >
-                      <Plus className="w-4 h-4" />
-                    </button>
-
-                    <button
-                      type="button"
-                      disabled={maxAffordableShields <= 0}
-                      onClick={() => setShieldQty(maxAffordableShields)}
-                      className="paper-btn-gold h-9 px-3 rounded-xl font-display font-bold text-xs whitespace-nowrap disabled:opacity-45"
-                    >
-                      MAX ({maxAffordableShields})
-                    </button>
-                  </div>
+                  <button
+                    type="button"
+                    disabled={maxAffordableShields <= 0}
+                    onClick={() => setShieldQty(maxAffordableShields)}
+                    className="glossy-btn-gold h-8 px-2.5 rounded-xl font-display font-extrabold text-[11px] whitespace-nowrap disabled:opacity-45"
+                  >
+                    MAX ({maxAffordableShields})
+                  </button>
                 </div>
-
-                <button
-                  type="button"
-                  disabled={effectiveQty <= 0}
-                  onClick={() => {
-                    onBuyShields(effectiveQty);
-                    setShieldQty(1);
-                  }}
-                  className={`w-full h-12 rounded-2xl font-display font-bold text-base flex items-center justify-center gap-2 transition-all ${
-                    effectiveQty > 0
-                      ? 'paper-btn-terracotta relative'
-                      : 'bg-[#E2D8C4] text-[#837766] cursor-not-allowed border-2 border-[#CFC2AA]'
-                  }`}
-                >
-                  {effectiveQty > 0 && (
-                    <span
-                      aria-hidden="true"
-                      className="absolute inset-1.5 rounded-xl border border-dashed border-[#FAF3E6]/55 pointer-events-none"
-                    />
-                  )}
-                  <span className="relative z-10 flex items-center gap-1.5">
-                    {effectiveQty > 0 ? (
-                      <>
-                        Buy {effectiveQty} {effectiveQty === 1 ? 'Shield' : 'Shields'} ·
-                        <PaperRocketIcon className="w-4 h-4 inline" /> {totalRocketCost}
-                      </>
-                    ) : (
-                      `Need ${SHIELD_COST_ROCKETS} Rockets to buy a Shield`
-                    )}
-                  </span>
-                </button>
               </div>
+
+              <button
+                type="button"
+                disabled={effectiveQty <= 0}
+                onClick={() => {
+                  onBuyShields(effectiveQty);
+                  setShieldQty(1);
+                }}
+                className={`w-full h-10 rounded-full font-display font-extrabold text-sm flex items-center justify-center gap-1.5 transition-all ${
+                  effectiveQty > 0
+                    ? 'glossy-btn-coral'
+                    : 'bg-[#E4D7C2] text-[#7D7466] cursor-not-allowed border-2 border-[#CEBFA6]'
+                }`}
+              >
+                {effectiveQty > 0 ? (
+                  <>
+                    <span>
+                      Buy {effectiveQty} {effectiveQty === 1 ? 'Shield' : 'Shields'} ·
+                    </span>
+                    <PaperRocketIcon className="w-4 h-4 inline" />
+                    <span>{totalRocketCost}</span>
+                  </>
+                ) : (
+                  <span>Need {SHIELD_COST_ROCKETS} Rockets to buy a Shield</span>
+                )}
+              </button>
             </div>
           </div>
         )}
@@ -328,74 +327,77 @@ export const EquipmentsModal: React.FC<EquipmentsModalProps> = ({
       role="dialog"
       aria-modal="true"
       aria-label="Equipments Hangar"
-      className="fixed inset-0 z-40 bg-[#14182B]/72 flex items-center justify-center p-4 sm:p-6"
+      className="fixed inset-0 z-40 bg-[#040724]/78 backdrop-blur-[2px] flex items-center justify-center p-4 pt-7"
       onClick={onClose}
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        className="animate-modal-enter paper-cream-surface paper-cutout-shadow w-full max-w-md rounded-3xl border-[3px] border-[#27324F] p-5 sm:p-6 flex flex-col max-h-[90dvh] overflow-hidden"
+        className="animate-modal-enter station-modal-frame relative w-full max-w-[350px] px-3.5 pb-4 pt-7 flex flex-col max-h-[82dvh]"
       >
-        <div className="shrink-0 flex items-start justify-between gap-3 pb-3 border-b-2 border-dashed border-[#D3C4AA]">
-          <div className="flex items-center gap-2.5">
-            <div className="w-10 h-10 rounded-2xl bg-[#C75C3B] text-[#FAF3E6] flex items-center justify-center shadow-[0_3px_0_#8D3C23] shrink-0">
-              <Wrench className="w-5 h-5" />
+        {/* Centered Floating Solid-Blue Header Pill + Solid Orange Wrench Circle (Matches Mockup) */}
+        <div className="pointer-events-none absolute -top-5 inset-x-0 flex justify-center z-20">
+          <div className="station-header-pill w-fit h-10 pl-1.5 pr-4 rounded-full inline-flex items-center gap-2 whitespace-nowrap">
+            <div className="w-8 h-8 rounded-full bg-[#FF6814] border-2 border-[#FFE699] flex items-center justify-center text-white shrink-0">
+              <Wrench className="w-4 h-4 stroke-[2.5]" />
             </div>
-            <div>
-              <h2 className="font-display text-xl font-bold text-[#27324F] leading-tight">
-                Equipments
-              </h2>
-              <p className="text-xs font-semibold text-[#6A5E4E] mt-0.5">
-                Your owned satellites & orbital shields
-              </p>
-            </div>
+            <h2 className="font-display text-base sm:text-lg font-extrabold text-white leading-none drop-shadow-[0_1.5px_0_#072578]">
+              Equipments
+            </h2>
           </div>
-
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label="Close Equipments"
-            className="paper-btn-cream w-9 h-9 rounded-full flex items-center justify-center shrink-0"
-          >
-            <X className="w-4 h-4 text-[#27324F]" />
-          </button>
         </div>
 
-        <div className="min-h-0 flex-1 overflow-y-auto mt-3.5 flex flex-col gap-3 pr-0.5">
+        {/* Uniform Compact Solid Orange-Red Close Button */}
+        <button
+          type="button"
+          onClick={onClose}
+          aria-label="Close Equipments"
+          className="glossy-close-orange absolute -top-2.5 -right-2.5 z-30 w-8 h-8 rounded-full flex items-center justify-center transition-transform focus-visible:outline-2 focus-visible:outline-[#38E8FF]"
+        >
+          <X className="w-4 h-4 stroke-[3]" />
+        </button>
+
+        <p className="shrink-0 text-[11px] sm:text-xs font-bold text-[#253B7A] text-center pb-2">
+          Your owned satellites &amp; orbital shields
+        </p>
+
+        <div className="min-h-0 flex-1 overflow-y-auto flex flex-col gap-2.5 pr-0.5">
           {/* Owned Satellites */}
           <div>
-            <h3 className="font-display font-bold text-xs uppercase tracking-wider text-[#6A5E4E] mb-2">
-              Owned Satellites ({ownedDefs.length}/{SATELLITES.length})
-            </h3>
+            <div className="px-2.5 py-1 rounded-xl bg-[#CFE5FF] border border-[#9EC8FA] mb-1.5">
+              <h3 className="font-display font-extrabold text-[11px] uppercase tracking-wider text-[#123A8C]">
+                Owned Satellites ({ownedDefs.length}/{SATELLITES.length})
+              </h3>
+            </div>
             <div className="flex flex-col gap-2">
               {ownedDefs.map((sat) => {
                 const isEquipped = selectedSatellite === sat.id;
                 return (
                   <div
                     key={sat.id}
-                    className={`rounded-2xl border-2 p-3 flex items-center gap-3 ${
+                    className={`rounded-2xl border-2 p-2.5 flex items-center gap-2.5 ${
                       isEquipped
-                        ? 'bg-[#FFF5D4] border-[#C75C3B]'
-                        : 'bg-[#FCF8EE] border-[#D4C5AA]'
+                        ? 'bg-[#FFE6A0] border-[#F08814]'
+                        : 'bg-[#FFFDF8] border-[#E5D0AE]'
                     }`}
                   >
-                    <SatelliteIllustration id={sat.id} className="w-12 h-12 shrink-0" />
+                    <SatelliteIllustration id={sat.id} className="w-11 h-11 shrink-0" />
                     <div className="min-w-0 flex-1">
-                      <div className="font-display font-bold text-sm text-[#27324F]">
+                      <div className="font-display font-extrabold text-xs sm:text-sm text-[#13245C] leading-tight">
                         {sat.name}
                       </div>
-                      <p className="text-[11px] font-semibold text-[#5E5447] leading-snug mt-0.5">
+                      <p className="text-[10px] sm:text-[11px] font-semibold text-[#3B4B75] leading-snug mt-0.5">
                         {sat.description}
                       </p>
                     </div>
                     {isEquipped ? (
-                      <span className="shrink-0 px-2.5 py-1 rounded-xl bg-[#5F9E73] text-[#FAF3E6] text-xs font-display font-bold flex items-center gap-1">
-                        <Check className="w-3.5 h-3.5" /> Active
+                      <span className="glossy-btn-green shrink-0 px-2.5 h-8 rounded-full text-[11px] font-display font-bold flex items-center gap-1">
+                        <Check className="w-3 h-3 stroke-[3]" /> Active
                       </span>
                     ) : (
                       <button
                         type="button"
                         onClick={() => onEquipSatellite(sat.id)}
-                        className="paper-btn-denim shrink-0 h-9 px-3 rounded-xl text-xs font-display font-bold"
+                        className="glossy-btn-blue shrink-0 h-8 px-3 rounded-full text-[11px] font-display font-bold"
                       >
                         Select
                       </button>
@@ -408,25 +410,27 @@ export const EquipmentsModal: React.FC<EquipmentsModalProps> = ({
 
           {/* Owned Shields Inventory */}
           <div>
-            <h3 className="font-display font-bold text-xs uppercase tracking-wider text-[#6A5E4E] mb-2">
-              Power Shields
-            </h3>
-            <div className="rounded-2xl bg-[#FCF8EE] border-2 border-[#D4C5AA] p-3.5 flex items-center justify-between gap-3">
-              <div className="flex items-center gap-3">
-                <div className="w-12 h-12 rounded-2xl bg-[#232942] flex items-center justify-center shrink-0">
-                  <PaperShieldIcon className="w-8 h-8" />
+            <div className="px-2.5 py-1 rounded-xl bg-[#CFE5FF] border border-[#9EC8FA] mb-1.5">
+              <h3 className="font-display font-extrabold text-[11px] uppercase tracking-wider text-[#123A8C]">
+                Power Shields
+              </h3>
+            </div>
+            <div className="rounded-2xl bg-[#FFFDF8] border-2 border-[#E5D0AE] p-2.5 flex items-center justify-between gap-2.5">
+              <div className="flex items-center gap-2.5">
+                <div className="w-10 h-10 rounded-xl bg-[#0D1A5C] border-2 border-[#1668E8] flex items-center justify-center shrink-0 p-1">
+                  <PaperShieldIcon className="w-7 h-7" />
                 </div>
                 <div>
-                  <div className="font-display font-bold text-sm text-[#27324F]">
+                  <div className="font-display font-extrabold text-xs sm:text-sm text-[#13245C]">
                     Orbit Shields
                   </div>
-                  <div className="text-[11px] font-semibold text-[#5E5447]">
-                    Arm 1 shield before launching any level
+                  <div className="text-[10px] sm:text-[11px] font-semibold text-[#3B4B75]">
+                    Arm 1 shield before launching any level.
                   </div>
                 </div>
               </div>
-              <span className="font-mono-num font-bold text-lg text-[#4D78A8] shrink-0">
-                ×{shieldsOwned}
+              <span className="font-mono-num font-extrabold text-lg text-[#1342A8] shrink-0">
+                x{shieldsOwned}
               </span>
             </div>
           </div>
@@ -435,7 +439,7 @@ export const EquipmentsModal: React.FC<EquipmentsModalProps> = ({
         <button
           type="button"
           onClick={onOpenSpaceStation}
-          className="paper-btn-denim shrink-0 mt-4 w-full h-11 rounded-2xl font-display font-bold text-sm flex items-center justify-center gap-2"
+          className="glossy-btn-blue shrink-0 mt-3 w-full h-10 rounded-full font-display font-extrabold text-xs sm:text-sm flex items-center justify-center gap-1.5"
         >
           <Radio className="w-4 h-4" />
           <span>Visit Space Station Shop</span>
