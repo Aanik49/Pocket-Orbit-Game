@@ -12,13 +12,15 @@ import { spaceAudio } from './game/audio';
 import { calculateCompletionStars, getLevelById } from './game/levels';
 import {
   applyDailyMissionProgress,
+  buyBooster,
   buySatellite,
-  buyShields,
+  buyTrail,
   canClaimDailyLogin,
   claimDailyLoginReward,
   claimDailyMissionReward,
-  consumeOneShield,
+  consumeBooster,
   equipSatellite,
+  equipTrail,
   getNextUnlockedLevelId,
   hasClaimableDailyMission,
   isLevelUnlocked,
@@ -27,12 +29,14 @@ import {
   recordLevelCompletion,
 } from './game/storage';
 import {
+  BoosterKind,
   GameOverReason,
   GameScreen,
   HudSnapshot,
   RunSummary,
   SatelliteId,
   SaveData,
+  TrailId,
 } from './types';
 
 type LobbyModal =
@@ -60,6 +64,8 @@ export default function App() {
   const [activeModal, setActiveModal] = useState<LobbyModal>(null);
   const [gameOverReason, setGameOverReason] = useState<GameOverReason>('collision');
   const [runSummary, setRunSummary] = useState<RunSummary | null>(null);
+  const [chronoArmed, setChronoArmed] = useState<boolean>(true);
+  const [magnetArmed, setMagnetArmed] = useState<boolean>(true);
 
   const activeLevel = useMemo(() => getLevelById(activeLevelId), [activeLevelId]);
   const pendingStartLevel = useMemo(() => getLevelById(pendingStartLevelId), [pendingStartLevelId]);
@@ -79,6 +85,17 @@ export default function App() {
     timerDisabled: false,
     shieldActive: false,
     satelliteId: saveData.selectedSatellite,
+    chronoRemaining: 0,
+    chronoUsed: false,
+    magnetRemaining: 0,
+    magnetUsed: false,
+    phaseInvulnActive: false,
+    flareWarningLane: null,
+    flareActiveLane: null,
+    orbitReversed: false,
+    bossPhase: activeLevel.boss ? 1 : 0,
+    bossTotalPhases: activeLevel.boss?.phases ?? 0,
+    bossAlert: null,
   }));
 
   const canvasRef = useRef<OrbitCanvasHandle | null>(null);
@@ -129,7 +146,6 @@ export default function App() {
     };
   }, []);
 
-  /** Opens the pre-launch Loadout panel (satellite selector + shield toggle) before starting a level */
   const openLevelStartPanel = useCallback((levelId: number) => {
     if (!isLevelUnlocked(levelId, saveDataRef.current.records)) return;
     spaceAudio.unlock();
@@ -137,20 +153,28 @@ export default function App() {
     setActiveModal('level_start');
   }, []);
 
-  /** Launches gameplay immediately with chosen satellite and optional 1-shield consumption */
   const launchLevelWithLoadout = useCallback(
-    (levelId: number, useShield: boolean) => {
+    (
+      levelId: number,
+      options: { useShield: boolean; enableChrono: boolean; enableMagnet: boolean }
+    ) => {
       const currentSave = saveDataRef.current;
       if (!isLevelUnlocked(levelId, currentSave.records)) return;
 
       let shieldArmed = false;
-      if (useShield && currentSave.shields > 0) {
+      if (options.useShield && currentSave.shields > 0) {
         shieldArmed = true;
-        const nextSave = consumeOneShield(currentSave);
+        const nextSave = consumeBooster(currentSave, 'shield');
         setSaveData(nextSave);
       }
 
+      const canChrono = options.enableChrono && currentSave.chronoPulses > 0;
+      const canMagnet = options.enableMagnet && currentSave.starMagnets > 0;
+      setChronoArmed(canChrono);
+      setMagnetArmed(canMagnet);
+
       const satelliteId = currentSave.selectedSatellite;
+      const trailId = currentSave.selectedTrail;
       spaceAudio.unlock();
       spaceAudio.playShift(true);
 
@@ -161,7 +185,10 @@ export default function App() {
       setScreen('PLAYING');
       canvasRef.current?.loadLevel(levelId, 'PLAYING', {
         satelliteId,
+        trailId,
         shieldActive: shieldArmed,
+        chronoAvailable: canChrono,
+        magnetAvailable: canMagnet,
       });
     },
     []
@@ -172,7 +199,12 @@ export default function App() {
   }, [openLevelStartPanel]);
 
   const handleRetryImmediate = useCallback(() => {
-    launchLevelWithLoadout(activeLevelIdRef.current, false);
+    const s = saveDataRef.current;
+    launchLevelWithLoadout(activeLevelIdRef.current, {
+      useShield: false,
+      enableChrono: s.chronoPulses > 0,
+      enableMagnet: s.starMagnets > 0,
+    });
   }, [launchLevelWithLoadout]);
 
   const handleNextLevel = useCallback(() => {
@@ -247,10 +279,25 @@ export default function App() {
     }
   }, []);
 
+  const handleBoosterUsed = useCallback((kind: BoosterKind) => {
+    setSaveData((prev) => consumeBooster(prev, kind));
+  }, []);
+
+  const handleActivateChrono = useCallback(() => {
+    if (screenRef.current !== 'PLAYING') return;
+    spaceAudio.unlock();
+    canvasRef.current?.activateChronoPulse();
+  }, []);
+
+  const handleActivateMagnet = useCallback(() => {
+    if (screenRef.current !== 'PLAYING') return;
+    spaceAudio.unlock();
+    canvasRef.current?.activateStarMagnet();
+  }, []);
+
   const handleGameOver = useCallback(
     (reason: GameOverReason, runStats: { orbitalStars: number; shifts: number }) => {
       setGameOverReason(reason);
-      // Credit partial orbital stars & shifts toward today's Daily Missions even on a failed attempt
       if (runStats.orbitalStars > 0 || runStats.shifts > 0) {
         setSaveData((prev) =>
           applyDailyMissionProgress(prev, {
@@ -279,6 +326,8 @@ export default function App() {
         isNewBestTime,
         isNewBestShifts,
         starsAddedToLobby,
+        craftBonusStars,
+        bossBonusRockets,
         sectorBonusRockets,
         completedSectorTitle,
       } = recordLevelCompletion(
@@ -297,6 +346,8 @@ export default function App() {
         parShifts: lvl.parShifts,
         starsEarned: earnedRating,
         starsAddedToLobby,
+        craftBonusStars,
+        bossBonusRockets,
         sectorBonusRockets,
         completedSectorTitle,
         isNewBestTime,
@@ -332,10 +383,22 @@ export default function App() {
     setSaveData((prev) => equipSatellite(prev, id));
   }, []);
 
-  const handleBuyShields = useCallback((qty: number) => {
+  const handleBuyTrail = useCallback((id: TrailId) => {
+    spaceAudio.unlock();
+    spaceAudio.playPortalOpen();
+    setSaveData((prev) => buyTrail(prev, id));
+  }, []);
+
+  const handleEquipTrail = useCallback((id: TrailId) => {
+    spaceAudio.unlock();
+    spaceAudio.playShift(true);
+    setSaveData((prev) => equipTrail(prev, id));
+  }, []);
+
+  const handleBuyBooster = useCallback((kind: BoosterKind, qty: number) => {
     spaceAudio.unlock();
     spaceAudio.playStar(1);
-    setSaveData((prev) => buyShields(prev, qty));
+    setSaveData((prev) => buyBooster(prev, kind, qty));
   }, []);
 
   // Keyboard shortcuts + window blur safety
@@ -365,6 +428,18 @@ export default function App() {
       }
 
       if (activeModalRef.current !== null) return;
+
+      if (e.code === 'KeyQ' && screenRef.current === 'PLAYING') {
+        e.preventDefault();
+        handleActivateChrono();
+        return;
+      }
+
+      if (e.code === 'KeyE' && screenRef.current === 'PLAYING') {
+        e.preventDefault();
+        handleActivateMagnet();
+        return;
+      }
 
       if (e.code === 'KeyR' && (screenRef.current === 'PLAYING' || screenRef.current === 'GAMEOVER')) {
         e.preventDefault();
@@ -406,9 +481,17 @@ export default function App() {
       window.removeEventListener('keyup', onKeyUp);
       window.removeEventListener('blur', onBlur);
     };
-  }, [handleNextLevel, handlePause, handlePlayFromLobby, handleResume, handleRetryImmediate]);
+  }, [
+    handleActivateChrono,
+    handleActivateMagnet,
+    handleNextLevel,
+    handlePause,
+    handlePlayFromLobby,
+    handleResume,
+    handleRetryImmediate,
+  ]);
 
-  // Preload & decode cosmic lobby assets on startup so Lobby transitions are always instant
+  // Preload & decode cosmic lobby assets on startup
   useEffect(() => {
     const assets = [
       './assets/cosmic/lobby-bg.png',
@@ -444,21 +527,19 @@ export default function App() {
   const dailyMissionClaimable = hasClaimableDailyMission(saveData.dailyMissions);
 
   return (
-    <main className="relative w-screen h-[100dvh] overflow-hidden bg-[#080C38] select-none">
-      {/* Animated Launch Splash Screen */}
+    <main className="fixed inset-0 w-full h-full overflow-hidden bg-[#080C38] select-none">
       {showSplash && <SplashScreen onFinish={handleSplashDone} />}
 
-      {/* Isolated 60fps Orbital Canvas */}
       <OrbitCanvas
         ref={canvasRef}
         lowPower={saveData.lowPower}
         onHudChange={setHud}
+        onBoosterUsed={handleBoosterUsed}
         onGameOver={handleGameOver}
         onVictory={handleVictory}
         onPointerTap={handlePointerTap}
       />
 
-      {/* Keep Cosmic Space Lobby mounted for instant, zero-lag scene transitions */}
       <LobbyScreen
         isVisible={screen === 'TITLE'}
         lobbyStars={saveData.stars}
@@ -482,20 +563,24 @@ export default function App() {
         onToggleMusic={handleToggleMusic}
       />
 
-      {/* Active Gameplay Cosmic HUD */}
       {screen !== 'TITLE' && (
         <GameHud
           level={activeLevel}
           hud={hud}
           muted={saveData.muted}
           musicMuted={saveData.musicMuted}
+          chronoOwned={saveData.chronoPulses}
+          magnetOwned={saveData.starMagnets}
+          chronoArmed={chronoArmed}
+          magnetArmed={magnetArmed}
+          onActivateChrono={handleActivateChrono}
+          onActivateMagnet={handleActivateMagnet}
           onPause={handlePause}
           onToggleMute={handleToggleMute}
           onToggleMusic={handleToggleMusic}
         />
       )}
 
-      {/* Pause Modal */}
       {screen === 'PAUSED' && activeModal === null && (
         <PauseModal
           level={activeLevel}
@@ -511,7 +596,6 @@ export default function App() {
         />
       )}
 
-      {/* Collision / Timeout Modal */}
       {screen === 'GAMEOVER' && activeModal === null && (
         <GameOverModal
           level={activeLevel}
@@ -526,7 +610,6 @@ export default function App() {
         />
       )}
 
-      {/* Victory Summary Modal */}
       {screen === 'VICTORY' && runSummary && activeModal === null && (
         <VictoryModal
           level={activeLevel}
@@ -542,7 +625,6 @@ export default function App() {
         />
       )}
 
-      {/* 6-Sector / 60-Level Atlas */}
       {activeModal === 'sectors' && (
         <LevelSelectModal
           currentLevelId={saveData.currentLevelId}
@@ -553,21 +635,22 @@ export default function App() {
         />
       )}
 
-      {/* Pre-Launch Loadout Panel (Satellite Selection + Shield Toggle) */}
       {activeModal === 'level_start' && (
         <LevelStartModal
           level={pendingStartLevel}
           ownedSatellites={saveData.ownedSatellites}
           selectedSatellite={saveData.selectedSatellite}
+          selectedTrail={saveData.selectedTrail}
           shieldsOwned={saveData.shields}
+          chronoOwned={saveData.chronoPulses}
+          magnetOwned={saveData.starMagnets}
           onSelectSatellite={handleEquipSatellite}
-          onLaunch={(useShield) => launchLevelWithLoadout(pendingStartLevel.id, useShield)}
+          onLaunch={(options) => launchLevelWithLoadout(pendingStartLevel.id, options)}
           onOpenSpaceStation={() => setActiveModal('space_station')}
           onClose={() => setActiveModal(null)}
         />
       )}
 
-      {/* Daily Login 7-Day Rewards Modal */}
       {activeModal === 'daily_login' && (
         <DailyLoginModal
           loginState={saveData.dailyLogin}
@@ -576,7 +659,6 @@ export default function App() {
         />
       )}
 
-      {/* Daily Missions Modal */}
       {activeModal === 'daily_mission' && (
         <DailyMissionModal
           missionState={saveData.dailyMissions}
@@ -585,29 +667,38 @@ export default function App() {
         />
       )}
 
-      {/* Space Station Shop Modal (4 Satellites + Shields) */}
       {activeModal === 'space_station' && (
         <SpaceStationModal
           lobbyStars={saveData.stars}
           lobbyRockets={saveData.rockets}
           shieldsOwned={saveData.shields}
+          chronoOwned={saveData.chronoPulses}
+          magnetOwned={saveData.starMagnets}
           ownedSatellites={saveData.ownedSatellites}
           selectedSatellite={saveData.selectedSatellite}
+          ownedTrails={saveData.ownedTrails}
+          selectedTrail={saveData.selectedTrail}
           records={saveData.records}
           onBuySatellite={handleBuySatellite}
           onEquipSatellite={handleEquipSatellite}
-          onBuyShields={handleBuyShields}
+          onBuyTrail={handleBuyTrail}
+          onEquipTrail={handleEquipTrail}
+          onBuyBooster={handleBuyBooster}
           onClose={() => setActiveModal(null)}
         />
       )}
 
-      {/* Equipments Hangar Modal (Owned Satellites & Shields) */}
       {activeModal === 'equipments' && (
         <EquipmentsModal
           ownedSatellites={saveData.ownedSatellites}
           selectedSatellite={saveData.selectedSatellite}
+          ownedTrails={saveData.ownedTrails}
+          selectedTrail={saveData.selectedTrail}
           shieldsOwned={saveData.shields}
+          chronoOwned={saveData.chronoPulses}
+          magnetOwned={saveData.starMagnets}
           onEquipSatellite={handleEquipSatellite}
+          onEquipTrail={handleEquipTrail}
           onOpenSpaceStation={() => setActiveModal('space_station')}
           onClose={() => setActiveModal(null)}
         />

@@ -1,4 +1,5 @@
 import {
+  BoosterKind,
   GameOverReason,
   GameScreen,
   HazardKind,
@@ -8,6 +9,7 @@ import {
   OrbitLane,
   PlanetPalette,
   SatelliteId,
+  TrailId,
 } from '../types';
 import { spaceAudio } from './audio';
 import { getLevelById } from './levels';
@@ -19,6 +21,10 @@ interface ActiveStar {
   speed: number;
   collected: boolean;
   bobPhase: number;
+  magnetic: boolean;
+  pulled: boolean;
+  x: number;
+  y: number;
 }
 
 interface ActiveHazard {
@@ -39,6 +45,36 @@ interface ActiveMoon {
   speedBoost: number;
   radialTug: number;
   color: string;
+}
+
+interface ActiveSolarFlare {
+  orbit: OrbitLane;
+  period: number;
+  telegraphDuration: number;
+  activeDuration: number;
+  timer: number;
+  state: 'idle' | 'telegraph' | 'active';
+  alternating: boolean;
+  sweepAngle: number;
+}
+
+interface ActiveWormholeGate {
+  id: string;
+  orbit: OrbitLane;
+  angle: number;
+  targetOrbit: OrbitLane;
+  targetAngle: number;
+  color: string;
+  cooldown: number;
+}
+
+interface ActiveDebrisRing {
+  radius: number;
+  maxRadius: number;
+  speed: number;
+  gapAngle: number;
+  gapHalfWidth: number;
+  deflected: boolean;
 }
 
 interface ActivePortal {
@@ -92,6 +128,7 @@ interface Shockwave {
 
 export interface EngineCallbacks {
   onHudChange: (snapshot: HudSnapshot) => void;
+  onBoosterUsed: (kind: BoosterKind) => void;
   onGameOver: (
     reason: GameOverReason,
     runStats: { orbitalStars: number; shifts: number }
@@ -140,7 +177,14 @@ export class OrbitEngine {
 
   // Active loadout state
   private satelliteId: SatelliteId = 'default';
+  private trailId: TrailId = 'classic';
   private shieldActive = false;
+  private chronoAvailable = false;
+  private chronoUsed = false;
+  private chronoRemaining = 0;
+  private magnetAvailable = false;
+  private magnetUsed = false;
+  private magnetRemaining = 0;
   private timerDisabled = false;
   private timeRemaining: number | null = null;
 
@@ -148,6 +192,7 @@ export class OrbitEngine {
   private satTargetOrbit: OrbitLane = 1;
   private satCurrentRadius = 148;
   private satAngle = -Math.PI / 2;
+  private orbitDirection: 1 | -1 = 1;
   private satSquash = 0;
   private satTrail: TrailPoint[] = [];
   private satInGravityWell = false;
@@ -155,11 +200,16 @@ export class OrbitEngine {
   private satWarpProgress = 0;
   private satWarpStartX = 0;
   private satWarpStartY = 0;
+  private phaseInvulnTimer = 0;
+  private warpGraceTimer = 0;
 
   // Level entities
   private stars: ActiveStar[] = [];
   private hazards: ActiveHazard[] = [];
   private moons: ActiveMoon[] = [];
+  private solarFlares: ActiveSolarFlare[] = [];
+  private wormholeGates: ActiveWormholeGate[] = [];
+  private debrisRings: ActiveDebrisRing[] = [];
   private portal: ActivePortal = {
     orbit: 0,
     angle: 0,
@@ -168,6 +218,15 @@ export class OrbitEngine {
     pulse: 0,
     openAnim: 0,
   };
+
+  // Multi-phase Boss state
+  private bossPhase = 0;
+  private bossTotalPhases = 0;
+  private bossAlert: string | null = null;
+  private bossAlertTimer = 0;
+  private bossRingTimer = 0;
+  private polarityFlipCountdown = 0;
+  private polarityFlipTriggered = false;
 
   // Run telemetry
   private starsCollected = 0;
@@ -366,7 +425,14 @@ export class OrbitEngine {
     this.screen = targetScreen;
 
     this.satelliteId = loadout?.satelliteId ?? 'default';
+    this.trailId = loadout?.trailId ?? 'classic';
     this.shieldActive = Boolean(loadout?.shieldActive);
+    this.chronoAvailable = Boolean(loadout?.chronoAvailable);
+    this.chronoUsed = false;
+    this.chronoRemaining = 0;
+    this.magnetAvailable = Boolean(loadout?.magnetAvailable);
+    this.magnetUsed = false;
+    this.magnetRemaining = 0;
 
     const satDef = getSatelliteById(this.satelliteId);
     this.timerDisabled = this.level.timeLimit !== null && satDef.disablesTimer;
@@ -376,19 +442,29 @@ export class OrbitEngine {
     this.satTargetOrbit = this.level.startOrbit;
     this.satCurrentRadius = this.level.startOrbit === 0 ? this.innerRadius : this.outerRadius;
     this.satAngle = this.level.startAngle;
+    this.orbitDirection = 1;
     this.satSquash = 0;
     this.satTrail = [];
     this.satInGravityWell = false;
     this.satGravityMode = 'none';
     this.satWarpProgress = 0;
+    this.phaseInvulnTimer = 0;
+    this.warpGraceTimer = 0;
 
-    this.stars = this.level.stars.map((s, idx) => ({
-      orbit: s.orbit,
-      angle: s.angle,
-      speed: s.speed ?? 0,
-      collected: false,
-      bobPhase: idx * 1.7,
-    }));
+    this.stars = this.level.stars.map((s, idx) => {
+      const r = s.orbit === 0 ? this.innerRadius : this.outerRadius;
+      return {
+        orbit: s.orbit,
+        angle: s.angle,
+        speed: s.speed ?? 0,
+        collected: false,
+        bobPhase: idx * 1.7,
+        magnetic: Boolean(s.magnetic),
+        pulled: false,
+        x: this.centerX + Math.cos(s.angle) * r,
+        y: this.centerY + Math.sin(s.angle) * r,
+      };
+    });
 
     this.hazards = this.level.hazards.map((h, idx) => ({
       orbit: h.orbit,
@@ -409,6 +485,48 @@ export class OrbitEngine {
       radialTug: m.radialTug,
       color: m.color,
     }));
+
+    this.solarFlares = (this.level.solarFlares ?? []).map((f) => ({
+      orbit: f.orbit,
+      period: f.period,
+      telegraphDuration: f.telegraphDuration,
+      activeDuration: f.activeDuration,
+      timer: f.initialDelay,
+      state: 'idle',
+      alternating: Boolean(f.alternating),
+      sweepAngle: 0,
+    }));
+
+    this.wormholeGates = (this.level.wormholeGates ?? []).map((g) => ({
+      id: g.id,
+      orbit: g.orbit,
+      angle: g.angle,
+      targetOrbit: g.targetOrbit,
+      targetAngle: g.targetAngle,
+      color: g.color ?? '#3CF2FF',
+      cooldown: 0,
+    }));
+
+    this.debrisRings = [];
+
+    // Initialize Multi-Phase Boss Encounter if present
+    if (this.level.boss) {
+      this.bossPhase = 1;
+      this.bossTotalPhases = this.level.boss.phases;
+      this.bossAlert = `${this.level.boss.title} · Phase 1/${this.level.boss.phases}`;
+      this.bossAlertTimer = 2.4;
+      this.bossRingTimer = this.level.boss.ringInterval ?? 5.0;
+      this.polarityFlipCountdown = 0;
+      this.polarityFlipTriggered = false;
+    } else {
+      this.bossPhase = 0;
+      this.bossTotalPhases = 0;
+      this.bossAlert = null;
+      this.bossAlertTimer = 0;
+      this.bossRingTimer = 0;
+      this.polarityFlipCountdown = 0;
+      this.polarityFlipTriggered = false;
+    }
 
     this.portal = {
       orbit: this.level.portal.orbit,
@@ -433,6 +551,56 @@ export class OrbitEngine {
     this.emitHudIfNeeded();
   }
 
+  /** Activate Slow-Mo Chrono Pulse booster (3.5s world slow-down to 42%) */
+  activateChronoPulse(): void {
+    if (
+      this.screen !== 'PLAYING' ||
+      !this.chronoAvailable ||
+      this.chronoUsed ||
+      this.chronoRemaining > 0 ||
+      this.satWarpProgress > 0
+    ) {
+      return;
+    }
+
+    this.chronoUsed = true;
+    this.chronoRemaining = 3.5;
+    spaceAudio.playChronoSlow();
+
+    const sx = this.centerX + Math.cos(this.satAngle) * this.satCurrentRadius;
+    const sy = this.centerY + Math.sin(this.satAngle) * this.satCurrentRadius;
+    this.spawnShockwave(sx, sy, 92, '#6CE5FF');
+    this.spawnBurst(sx, sy, '#9CF4FF', 16);
+
+    this.callbacks.onBoosterUsed('chrono');
+    this.emitHudIfNeeded();
+  }
+
+  /** Activate Star Magnet booster (6s arena-wide magnetic star vacuum) */
+  activateStarMagnet(): void {
+    if (
+      this.screen !== 'PLAYING' ||
+      !this.magnetAvailable ||
+      this.magnetUsed ||
+      this.magnetRemaining > 0 ||
+      this.satWarpProgress > 0
+    ) {
+      return;
+    }
+
+    this.magnetUsed = true;
+    this.magnetRemaining = 6.0;
+    spaceAudio.playMagnetPulse();
+
+    const sx = this.centerX + Math.cos(this.satAngle) * this.satCurrentRadius;
+    const sy = this.centerY + Math.sin(this.satAngle) * this.satCurrentRadius;
+    this.spawnShockwave(sx, sy, 110, '#FF7BF2');
+    this.spawnBurst(sx, sy, '#FFE45C', 16);
+
+    this.callbacks.onBoosterUsed('magnet');
+    this.emitHudIfNeeded();
+  }
+
   /** Primary gameplay input: shift between inner (fast) and outer (slow) orbit */
   shiftOrbit(): void {
     if (this.screen !== 'PLAYING' || this.satWarpProgress > 0 || this.hitstopTimer > 0) return;
@@ -446,9 +614,28 @@ export class OrbitEngine {
 
     const sx = this.centerX + Math.cos(this.satAngle) * this.satCurrentRadius;
     const sy = this.centerY + Math.sin(this.satAngle) * this.satCurrentRadius;
-    const accent = toInner ? '#F3C24F' : '#9EC0DA';
+    const satDef = getSatelliteById(this.satelliteId);
 
-    this.spawnShockwave(sx, sy, 32, accent);
+    // Phase Dasher grants brief invulnerability window on every shift
+    if (satDef.phaseDashSeconds && satDef.phaseDashSeconds > 0) {
+      this.phaseInvulnTimer = satDef.phaseDashSeconds;
+      this.spawnShockwave(sx, sy, 46, '#C57BFF');
+    } else {
+      const accent = toInner ? '#F3C24F' : '#9EC0DA';
+      this.spawnShockwave(sx, sy, 32, accent);
+    }
+
+    // Trigger Magnetic Star Clusters near the shift point to curve smoothly toward the craft!
+    const magneticTriggerDist = this.outerRadius * 1.05;
+    for (let i = 0; i < this.stars.length; i++) {
+      const st = this.stars[i];
+      if (st.collected || !st.magnetic || st.pulled) continue;
+      if (Math.hypot(st.x - sx, st.y - sy) < magneticTriggerDist) {
+        st.pulled = true;
+        this.spawnShockwave(st.x, st.y, 28, '#FF88F5');
+        this.spawnBurst(st.x, st.y, '#7CEBFF', 6);
+      }
+    }
 
     const particleCount = this.lowPower ? 5 : 9;
     const thrustDir = toInner ? this.satAngle : this.satAngle + Math.PI;
@@ -462,7 +649,7 @@ export class OrbitEngine {
         Math.sin(thrustDir + spread) * spd,
         2.4 + Math.random() * 1.1,
         2.2 + Math.random() * 1.6,
-        toInner ? '#F6D372' : '#FAF3E6'
+        satDef.phaseDashSeconds ? '#D8A3FF' : toInner ? '#F6D372' : '#FAF3E6'
       );
     }
 
@@ -472,7 +659,21 @@ export class OrbitEngine {
   private emitHudIfNeeded(): void {
     const timerBucket =
       this.timeRemaining === null ? -1 : Math.ceil(this.timeRemaining * 5);
-    const key = `${this.level.id}|${this.starsCollected}|${this.stars.length}|${this.portal.active ? 1 : 0}|${this.satTargetOrbit}|${this.satInGravityWell ? 1 : 0}|${this.satGravityMode}|${this.shiftCount}|${timerBucket}|${this.timerDisabled ? 1 : 0}|${this.shieldActive ? 1 : 0}|${this.satelliteId}`;
+    const chronoBucket = Math.ceil(this.chronoRemaining * 5);
+    const magnetBucket = Math.ceil(this.magnetRemaining * 5);
+
+    let flareWarningLane: OrbitLane | null = null;
+    let flareActiveLane: OrbitLane | null = null;
+    for (let i = 0; i < this.solarFlares.length; i++) {
+      const f = this.solarFlares[i];
+      if (f.state === 'active') flareActiveLane = f.orbit;
+      else if (f.state === 'telegraph') flareWarningLane = f.orbit;
+    }
+
+    const activeAlert = this.bossAlertTimer > 0 ? this.bossAlert : null;
+    const phaseActive = this.phaseInvulnTimer > 0;
+
+    const key = `${this.level.id}|${this.starsCollected}|${this.stars.length}|${this.portal.active ? 1 : 0}|${this.satTargetOrbit}|${this.satInGravityWell ? 1 : 0}|${this.satGravityMode}|${this.shiftCount}|${timerBucket}|${this.timerDisabled ? 1 : 0}|${this.shieldActive ? 1 : 0}|${this.satelliteId}|${chronoBucket}|${this.chronoUsed ? 1 : 0}|${magnetBucket}|${this.magnetUsed ? 1 : 0}|${phaseActive ? 1 : 0}|${flareWarningLane}|${flareActiveLane}|${this.orbitDirection}|${this.bossPhase}|${activeAlert ?? ''}`;
     if (key === this.lastHudKey) return;
     this.lastHudKey = key;
 
@@ -491,6 +692,17 @@ export class OrbitEngine {
       timerDisabled: this.timerDisabled,
       shieldActive: this.shieldActive,
       satelliteId: this.satelliteId,
+      chronoRemaining: this.chronoRemaining,
+      chronoUsed: this.chronoUsed,
+      magnetRemaining: this.magnetRemaining,
+      magnetUsed: this.magnetUsed,
+      phaseInvulnActive: phaseActive,
+      flareWarningLane,
+      flareActiveLane,
+      orbitReversed: this.orbitDirection === -1,
+      bossPhase: this.bossPhase,
+      bossTotalPhases: this.bossTotalPhases,
+      bossAlert: activeAlert,
     });
   }
 
@@ -594,7 +806,7 @@ export class OrbitEngine {
 
   private update(dt: number): void {
     this.elapsedClock += dt;
-    this.planetRotation += dt * 0.16;
+    this.planetRotation += dt * 0.16 * this.orbitDirection;
     this.updateEffects(dt);
 
     if (this.screen === 'TITLE') {
@@ -626,19 +838,65 @@ export class OrbitEngine {
       return;
     }
 
+    // Active In-Run Booster timers (real-time countdown)
+    if (this.chronoRemaining > 0) {
+      this.chronoRemaining = Math.max(0, this.chronoRemaining - dt);
+    }
+    if (this.magnetRemaining > 0) {
+      this.magnetRemaining = Math.max(0, this.magnetRemaining - dt);
+    }
+    if (this.phaseInvulnTimer > 0) {
+      this.phaseInvulnTimer = Math.max(0, this.phaseInvulnTimer - dt);
+    }
+    if (this.warpGraceTimer > 0) {
+      this.warpGraceTimer = Math.max(0, this.warpGraceTimer - dt);
+    }
+    if (this.bossAlertTimer > 0) {
+      this.bossAlertTimer = Math.max(0, this.bossAlertTimer - dt);
+    }
+
+    // Slow-Mo Chrono Pulse reduces world simulation speed to 42% while keeping lane shifts snappy
+    const worldScale = this.chronoRemaining > 0 ? 0.42 : 1.0;
+    const simDt = dt * worldScale;
+
     this.flightTime += dt;
     if (this.satSquash > 0) {
       this.satSquash = Math.max(0, this.satSquash - dt * 3.6);
     }
 
-    // 0. Sector 3+ Countdown Timer (disabled automatically when Nano Stopper is equipped)
+    // 0. Sector 3+ Countdown Timer (slowed by Chrono Pulse, disabled by Nano Stopper)
     if (this.timeRemaining !== null) {
-      this.timeRemaining = Math.max(0, this.timeRemaining - dt);
+      this.timeRemaining = Math.max(0, this.timeRemaining - simDt);
       if (this.timeRemaining <= 0) {
         const satX = this.centerX + Math.cos(this.satAngle) * this.satCurrentRadius;
         const satY = this.centerY + Math.sin(this.satAngle) * this.satCurrentRadius;
         this.triggerFailure('timeout', satX, satY);
         return;
+      }
+    }
+
+    // 0.5 Boss Polarity Flip Telegraph Countdown & Expanding Debris Ring Spawner
+    if (this.level.boss) {
+      if (this.polarityFlipCountdown > 0) {
+        this.polarityFlipCountdown -= simDt;
+        if (this.polarityFlipCountdown <= 0) {
+          this.polarityFlipCountdown = 0;
+          this.orbitDirection = this.orbitDirection === 1 ? -1 : 1;
+          this.bossAlert = 'ORBIT REVERSED!';
+          this.bossAlertTimer = 2.0;
+          spaceAudio.playBossPhase();
+          this.spawnShockwave(this.centerX, this.centerY, this.outerRadius * 1.15, '#D27BFF');
+          this.spawnBurst(this.centerX, this.centerY, '#7CEBFF', 16);
+        }
+      }
+
+      const hasDebrisRingEvent = this.level.boss.events.includes('debris_ring');
+      if (hasDebrisRingEvent && this.bossPhase >= 2) {
+        this.bossRingTimer -= simDt;
+        if (this.bossRingTimer <= 0) {
+          this.bossRingTimer = this.level.boss.ringInterval ?? 4.8;
+          this.spawnBossDebrisRing();
+        }
       }
     }
 
@@ -653,7 +911,7 @@ export class OrbitEngine {
 
     for (let i = 0; i < this.moons.length; i++) {
       const m = this.moons[i];
-      m.angle += m.speed * dt;
+      m.angle += m.speed * simDt;
       const mRad = this.outerRadius * m.orbitRadiusMult;
       const mx = this.centerX + Math.cos(m.angle) * mRad;
       const my = this.centerY + Math.sin(m.angle) * mRad;
@@ -674,36 +932,119 @@ export class OrbitEngine {
     this.satInGravityWell = inWell;
     this.satGravityMode = gravMode;
 
-    // 2. Spring interpolation between inner & outer rings (plus lunar radial pull)
+    // 2. Spring interpolation between inner & outer rings (stays snappy even in slow-mo)
     const baseTargetR = (this.satTargetOrbit === 0 ? this.innerRadius : this.outerRadius) + radialOffset;
     this.satCurrentRadius += (baseTargetR - this.satCurrentRadius) * Math.min(1, dt * 13);
 
-    // 3. Keplerian angular speed (close = fast, far = slow) modulated by gravity wells
+    // 3. Keplerian angular speed modulated by gravity wells, boss polarity direction, and chrono pulse
     const baseSpeed = this.satTargetOrbit === 0 ? this.level.innerSpeed : this.level.outerSpeed;
-    this.satAngle += baseSpeed * speedMultiplier * dt;
+    const craftChronoScale = this.chronoRemaining > 0 ? 0.58 : 1.0;
+    const bossPhasePace = this.bossPhase >= 3 ? 1.08 : this.bossPhase === 2 ? 1.04 : 1.0;
+    this.satAngle +=
+      baseSpeed * speedMultiplier * this.orbitDirection * bossPhasePace * craftChronoScale * dt;
 
-    const satX = this.centerX + Math.cos(this.satAngle) * this.satCurrentRadius;
-    const satY = this.centerY + Math.sin(this.satAngle) * this.satCurrentRadius;
+    let satX = this.centerX + Math.cos(this.satAngle) * this.satCurrentRadius;
+    let satY = this.centerY + Math.sin(this.satAngle) * this.satCurrentRadius;
+
+    // 3.5 Wormhole Gates (bidirectional teleport to opposite side of the orbit)
+    const gateTriggerR = Math.max(18, this.outerRadius * 0.13);
+    for (let i = 0; i < this.wormholeGates.length; i++) {
+      const g = this.wormholeGates[i];
+      if (g.cooldown > 0) {
+        g.cooldown = Math.max(0, g.cooldown - dt);
+        continue;
+      }
+
+      const rA = g.orbit === 0 ? this.innerRadius : this.outerRadius;
+      const ax = this.centerX + Math.cos(g.angle) * rA;
+      const ay = this.centerY + Math.sin(g.angle) * rA;
+
+      const rB = g.targetOrbit === 0 ? this.innerRadius : this.outerRadius;
+      const bx = this.centerX + Math.cos(g.targetAngle) * rB;
+      const by = this.centerY + Math.sin(g.targetAngle) * rB;
+
+      let warped = false;
+      let outOrbit: OrbitLane = g.targetOrbit;
+      let outAngle = g.targetAngle;
+      let inX = ax;
+      let inY = ay;
+      let outX = bx;
+      let outY = by;
+
+      if (Math.hypot(satX - ax, satY - ay) < gateTriggerR) {
+        warped = true;
+      } else if (Math.hypot(satX - bx, satY - by) < gateTriggerR) {
+        warped = true;
+        outOrbit = g.orbit;
+        outAngle = g.angle;
+        inX = bx;
+        inY = by;
+        outX = ax;
+        outY = ay;
+      }
+
+      if (warped) {
+        g.cooldown = 1.45;
+        this.satTargetOrbit = outOrbit;
+        this.satCurrentRadius = outOrbit === 0 ? this.innerRadius : this.outerRadius;
+        this.satAngle = outAngle;
+        this.satTrail = [];
+        this.warpGraceTimer = 0.45;
+
+        satX = this.centerX + Math.cos(this.satAngle) * this.satCurrentRadius;
+        satY = this.centerY + Math.sin(this.satAngle) * this.satCurrentRadius;
+
+        spaceAudio.playWarpGate();
+        this.spawnShockwave(inX, inY, 44, g.color);
+        this.spawnBurst(inX, inY, g.color, 10);
+        this.spawnShockwave(outX, outY, 50, '#FFFFFF');
+        this.spawnBurst(outX, outY, g.color, 14);
+        break;
+      }
+    }
+
     this.recordTrail(satX, satY);
 
-    // 4. Collectible stars
-    const starPickupRadius = Math.max(23, this.outerRadius * 0.17);
+    // 4. Collectible Stars (with Magnetic Clusters, Magnet Probe craft, & Star Magnet booster)
+    const satDef = getSatelliteById(this.satelliteId);
+    const basePickupR = Math.max(23, this.outerRadius * 0.17);
+    const starPickupRadius = basePickupR * (satDef.magnetRangeMult ?? 1.0);
+    const passivePullRadius =
+      this.magnetRemaining > 0
+        ? this.outerRadius * 2.6
+        : satDef.magnetRangeMult && satDef.magnetRangeMult > 1.3
+          ? this.outerRadius * 0.62
+          : 0;
+
     for (let i = 0; i < this.stars.length; i++) {
       const s = this.stars[i];
       if (s.collected) continue;
-      if (s.speed !== 0) s.angle += s.speed * dt;
+      if (s.speed !== 0 && !s.pulled) s.angle += s.speed * simDt;
       s.bobPhase += dt * 2.8;
 
-      const sr = s.orbit === 0 ? this.innerRadius : this.outerRadius;
-      const sx = this.centerX + Math.cos(s.angle) * sr;
-      const sy = this.centerY + Math.sin(s.angle) * sr;
+      if (!s.pulled) {
+        const sr = s.orbit === 0 ? this.innerRadius : this.outerRadius;
+        s.x = this.centerX + Math.cos(s.angle) * sr;
+        s.y = this.centerY + Math.sin(s.angle) * sr;
 
-      if (Math.hypot(satX - sx, satY - sy) < starPickupRadius) {
+        if (passivePullRadius > 0 && Math.hypot(satX - s.x, satY - s.y) < passivePullRadius) {
+          s.pulled = true;
+        }
+      } else {
+        const pullLerp = Math.min(1, dt * (this.magnetRemaining > 0 ? 8.0 : 6.4));
+        s.x += (satX - s.x) * pullLerp;
+        s.y += (satY - s.y) * pullLerp;
+      }
+
+      if (Math.hypot(satX - s.x, satY - s.y) < starPickupRadius) {
         s.collected = true;
         this.starsCollected++;
         spaceAudio.playStar(this.starsCollected - 1);
-        this.spawnBurst(sx, sy, '#F3C24F', 14);
-        this.spawnShockwave(sx, sy, 36, '#FFF1AD');
+        this.spawnBurst(s.x, s.y, s.magnetic ? '#FF90F0' : '#F3C24F', 14);
+        this.spawnShockwave(s.x, s.y, 36, '#FFF1AD');
+
+        // Advance Multi-Phase Boss Encounters on star collection milestones
+        this.checkBossPhaseTransition();
 
         if (this.starsCollected >= this.stars.length && !this.portal.active) {
           this.portal.active = true;
@@ -718,15 +1059,16 @@ export class OrbitEngine {
       }
     }
 
+    const isInvulnerable = this.phaseInvulnTimer > 0 || this.warpGraceTimer > 0;
+
     // 5. Space Junk Hazards & Satellite / Shield collision rules
-    const satDef = getSatelliteById(this.satelliteId);
     const satHitRadius = Math.max(4.0, this.outerRadius * 0.042 * satDef.hitboxScale);
     const sizeScale = this.outerRadius / 148;
 
     for (let i = 0; i < this.hazards.length; i++) {
       const h = this.hazards[i];
-      h.angle += h.speed * dt;
-      h.spin += dt * 1.15;
+      h.angle += h.speed * simDt;
+      h.spin += simDt * 1.15;
       if (h.deflectCooldown > 0) {
         h.deflectCooldown = Math.max(0, h.deflectCooldown - dt);
       }
@@ -737,18 +1079,16 @@ export class OrbitEngine {
       const hazardHitRadius = h.size * sizeScale * 0.64;
 
       if (Math.hypot(satX - hx, satY - hy) < satHitRadius + hazardHitRadius) {
-        // Shield protects from ALL obstacles on both orbits
-        if (this.shieldActive) {
+        if (this.shieldActive || isInvulnerable) {
           if (h.deflectCooldown <= 0) {
             h.deflectCooldown = 0.55;
-            this.spawnBurst(hx, hy, '#9EC0DA', 10);
-            this.spawnShockwave(satX, satY, 34, '#A8D8F0');
+            this.spawnBurst(hx, hy, this.phaseInvulnTimer > 0 ? '#D48BFF' : '#9EC0DA', 10);
+            this.spawnShockwave(satX, satY, 34, this.phaseInvulnTimer > 0 ? '#D48BFF' : '#A8D8F0');
             spaceAudio.playShift(false);
           }
           continue;
         }
 
-        // Heavy satellite protects from obstacles on the OUTER orbit (orbit === 1), inner orbit still fails
         if (satDef.outerImmune && h.orbit === 1) {
           if (h.deflectCooldown <= 0) {
             h.deflectCooldown = 0.55;
@@ -764,9 +1104,83 @@ export class OrbitEngine {
       }
     }
 
+    // 5.5 Periodic Solar Flare Sweeps
+    for (let i = 0; i < this.solarFlares.length; i++) {
+      const f = this.solarFlares[i];
+      f.timer -= simDt;
+      f.sweepAngle += simDt * (f.state === 'active' ? 6.5 : 2.2);
+
+      if (f.timer <= 0) {
+        if (f.state === 'idle') {
+          f.state = 'telegraph';
+          f.timer = f.telegraphDuration;
+          spaceAudio.playSolarFlareWarn();
+        } else if (f.state === 'telegraph') {
+          f.state = 'active';
+          f.timer = f.activeDuration;
+          spaceAudio.playSolarFlareBlast();
+          const fr = f.orbit === 0 ? this.innerRadius : this.outerRadius;
+          this.spawnShockwave(this.centerX, this.centerY, fr, '#FF6824');
+        } else {
+          f.state = 'idle';
+          const idleTime = Math.max(1.8, f.period - f.telegraphDuration - f.activeDuration);
+          f.timer = idleTime;
+          if (f.alternating) {
+            f.orbit = f.orbit === 0 ? 1 : 0;
+          }
+        }
+      }
+
+      if (f.state === 'active') {
+        const flareR = f.orbit === 0 ? this.innerRadius : this.outerRadius;
+        const onFlareLane = Math.abs(this.satCurrentRadius - flareR) < this.outerRadius * 0.13;
+        if (onFlareLane) {
+          const immuneOuter = satDef.outerImmune && f.orbit === 1;
+          if (!this.shieldActive && !isInvulnerable && !immuneOuter) {
+            this.triggerFailure('flare', satX, satY);
+            return;
+          }
+        }
+      }
+    }
+
+    // 5.6 Boss Expanding Debris Rings (dodge through the glowing safe-gap arc or shield/phase!)
+    for (let i = this.debrisRings.length - 1; i >= 0; i--) {
+      const ring = this.debrisRings[i];
+      ring.radius += ring.speed * simDt;
+      if (ring.radius >= ring.maxRadius) {
+        this.debrisRings.splice(i, 1);
+        continue;
+      }
+
+      const ringThickness = Math.max(7, this.outerRadius * 0.055);
+      if (Math.abs(this.satCurrentRadius - ring.radius) < ringThickness + satHitRadius) {
+        // Check whether satellite angle falls inside the wide safe passage gap
+        let angDiff = ((this.satAngle - ring.gapAngle + Math.PI) % TAU) - Math.PI;
+        if (angDiff < -Math.PI) angDiff += TAU;
+        const inSafeGap = Math.abs(angDiff) <= ring.gapHalfWidth;
+
+        if (!inSafeGap) {
+          const immuneOuter =
+            satDef.outerImmune &&
+            Math.abs(this.satCurrentRadius - this.outerRadius) < this.outerRadius * 0.16;
+          if (this.shieldActive || isInvulnerable || immuneOuter) {
+            if (!ring.deflected) {
+              ring.deflected = true;
+              this.spawnBurst(satX, satY, '#7CEBFF', 10);
+              this.spawnShockwave(satX, satY, 36, '#7CEBFF');
+            }
+          } else {
+            this.triggerFailure('collision', satX, satY);
+            return;
+          }
+        }
+      }
+    }
+
     // 6. Goal Wormhole Portal
     if (this.portal.speed !== 0) {
-      this.portal.angle += this.portal.speed * dt;
+      this.portal.angle += this.portal.speed * simDt;
     }
     this.portal.pulse += dt * 3.4;
     if (this.portal.openAnim > 0) {
@@ -792,6 +1206,74 @@ export class OrbitEngine {
     }
 
     this.emitHudIfNeeded();
+  }
+
+  private spawnBossDebrisRing(): void {
+    // Place the wide safe gap slightly ahead of the player so skilled timing or lane choice always works
+    const leadAngle = this.satAngle + this.orbitDirection * (0.85 + Math.random() * 0.65);
+    this.debrisRings.push({
+      radius: this.planetRadius * 1.05,
+      maxRadius: this.outerRadius * 1.32,
+      speed: this.outerRadius * 0.36,
+      gapAngle: leadAngle,
+      gapHalfWidth: 0.72, // ~82 degrees wide safe passage window
+      deflected: false,
+    });
+    spaceAudio.playSolarFlareWarn();
+    this.spawnShockwave(this.centerX, this.centerY, this.planetRadius * 1.6, '#FF6838');
+  }
+
+  private checkBossPhaseTransition(): void {
+    const boss = this.level.boss;
+    if (!boss || this.bossPhase >= boss.phases) return;
+
+    const total = this.stars.length;
+    let targetPhase = 1;
+    if (boss.phases === 2) {
+      if (this.starsCollected >= Math.ceil(total / 2)) targetPhase = 2;
+    } else {
+      if (this.starsCollected >= Math.max(2, total - 1)) targetPhase = 3;
+      else if (this.starsCollected >= 1) targetPhase = 2;
+    }
+
+    if (targetPhase <= this.bossPhase) return;
+    this.bossPhase = targetPhase;
+    spaceAudio.playBossPhase();
+    this.spawnShockwave(this.centerX, this.centerY, this.outerRadius * 1.2, '#FF5C38');
+
+    // Trigger signature boss twist for this phase
+    if (
+      boss.events.includes('polarity_flip') &&
+      !this.polarityFlipTriggered &&
+      this.bossPhase >= (boss.polarityFlipPhase ?? 2)
+    ) {
+      this.polarityFlipTriggered = true;
+      this.polarityFlipCountdown = 1.35;
+      this.bossAlert = `PHASE ${this.bossPhase}/${boss.phases} · POLARITY FLIP INCOMING!`;
+      this.bossAlertTimer = 2.6;
+    } else if (boss.events.includes('debris_ring')) {
+      this.bossAlert = `PHASE ${this.bossPhase}/${boss.phases} · EXPANDING DEBRIS RING!`;
+      this.bossAlertTimer = 2.6;
+      this.bossRingTimer = 0.6; // Fire first ring shortly after phase shift
+    } else if (boss.events.includes('solar_surge')) {
+      this.bossAlert = `PHASE ${this.bossPhase}/${boss.phases} · SOLAR SURGE!`;
+      this.bossAlertTimer = 2.5;
+      if (this.solarFlares.length === 0) {
+        this.solarFlares.push({
+          orbit: this.satTargetOrbit,
+          period: 5.2,
+          telegraphDuration: 1.3,
+          activeDuration: 1.05,
+          timer: 0.7,
+          state: 'idle',
+          alternating: true,
+          sweepAngle: 0,
+        });
+      }
+    } else {
+      this.bossAlert = `${boss.title} · PHASE ${this.bossPhase}/${boss.phases}`;
+      this.bossAlertTimer = 2.2;
+    }
   }
 
   private triggerFailure(reason: GameOverReason, x: number, y: number): void {
@@ -935,21 +1417,27 @@ export class OrbitEngine {
     this.drawOrbitTrack(this.innerRadius, this.satTargetOrbit === 0);
     this.drawOrbitTrack(this.outerRadius, this.satTargetOrbit === 1);
 
+    // 4.2 Periodic Solar Flare Telegraph / Active Plasma Sweeps
+    this.drawSolarFlares();
+
+    // 4.4 Boss Expanding Debris Rings (with highlighted emerald safe-passage arc)
+    this.drawBossDebrisRings();
+
+    // 4.6 Paired Wormhole Teleport Gates
+    this.drawWormholeGates();
+
     // 5. Vibrant Glossy 3D Striped & Cratered Central Planet with Cyan Atmospheric Halo
     this.drawPlanet(palette);
 
     // 6. Glowing Cosmic Warp Portal
     this.drawPortal();
 
-    // 7. Radiant Glossy 3D Golden Collectible Stars
+    // 7. Radiant Glossy 3D Golden & Magnetic Collectible Stars
     for (let i = 0; i < this.stars.length; i++) {
       const s = this.stars[i];
       if (s.collected) continue;
-      const r = s.orbit === 0 ? this.innerRadius : this.outerRadius;
-      const sx = this.centerX + Math.cos(s.angle) * r;
-      const sy = this.centerY + Math.sin(s.angle) * r;
       const bobScale = this.reducedMotion ? 1 : 1 + Math.sin(s.bobPhase) * 0.08;
-      this.drawStar(sx, sy, bobScale);
+      this.drawStar(s.x, s.y, bobScale, s.magnetic, s.pulled);
     }
 
     // 8. Vivid Glowing Neon Hazards (Green Energy Saber, Red-Orange Asteroid, Crystal Star Mine)
@@ -962,10 +1450,26 @@ export class OrbitEngine {
       this.drawHazard(hx, hy, h, sizeScale);
     }
 
-    // 9. Roaring Rocket Flame Plume & Glossy 3D Space Craft
+    // 9. Cosmetic Trail Ribbon / Flame Plume & Glossy 3D Space Craft
     if (this.screen !== 'GAMEOVER' || this.hitstopTimer > 0) {
       this.drawTrail();
       this.drawSatellite();
+    }
+
+    // 9.5 Slow-Mo Chrono Pulse ambient cyan vignette
+    if (this.chronoRemaining > 0 && !this.reducedMotion) {
+      const chronoGrad = ctx.createRadialGradient(
+        this.centerX,
+        this.centerY,
+        this.outerRadius * 0.65,
+        this.centerX,
+        this.centerY,
+        Math.max(this.width, this.height) * 0.72
+      );
+      chronoGrad.addColorStop(0, 'rgba(72, 232, 255, 0)');
+      chronoGrad.addColorStop(1, 'rgba(42, 184, 255, 0.22)');
+      ctx.fillStyle = chronoGrad;
+      ctx.fillRect(0, 0, this.width, this.height);
     }
 
     // 10. Pooled Luminous Shockwaves & Starburst Sparks
@@ -1371,14 +1875,233 @@ export class OrbitEngine {
 
     ctx.restore();
 
-    // Crisp luminous cyan-white rim stroke around planet edge
-    ctx.strokeStyle = 'rgba(182, 248, 255, 0.85)';
+    // Crisp luminous cyan-white rim stroke around planet edge (or glowing Boss Sovereign crown!)
+    if (this.level.boss) {
+      const bossPulse = 0.65 + 0.35 * Math.sin(this.elapsedClock * 5.2);
+      ctx.strokeStyle =
+        this.polarityFlipCountdown > 0
+          ? `rgba(218, 128, 255, ${bossPulse.toFixed(2)})`
+          : `rgba(255, 92, 56, ${bossPulse.toFixed(2)})`;
+      ctx.lineWidth = 4.2;
+      ctx.beginPath();
+      ctx.arc(cx, cy, pr + 4.5, 0, TAU);
+      ctx.stroke();
+
+      // Boss phase arc indicators around the planet core
+      const total = this.bossTotalPhases || 2;
+      const segArc = (TAU - total * 0.24) / total;
+      for (let i = 0; i < total; i++) {
+        const a0 = -Math.PI / 2 + i * (segArc + 0.24);
+        ctx.strokeStyle = i < this.bossPhase ? '#FFE45C' : 'rgba(255, 255, 255, 0.25)';
+        ctx.lineWidth = 2.6;
+        ctx.lineCap = 'round';
+        ctx.beginPath();
+        ctx.arc(cx, cy, pr + 9.5, a0, a0 + segArc);
+        ctx.stroke();
+      }
+    }
+
+    ctx.strokeStyle = this.level.boss ? '#FFD46B' : 'rgba(182, 248, 255, 0.85)';
     ctx.lineWidth = 2;
     ctx.beginPath();
     ctx.arc(cx, cy, pr, 0, TAU);
     ctx.stroke();
 
     ctx.restore();
+  }
+
+  private drawSolarFlares(): void {
+    if (this.solarFlares.length === 0) return;
+    const ctx = this.ctx;
+
+    for (let i = 0; i < this.solarFlares.length; i++) {
+      const f = this.solarFlares[i];
+      if (f.state === 'idle') continue;
+      const r = f.orbit === 0 ? this.innerRadius : this.outerRadius;
+
+      ctx.save();
+      if (f.state === 'telegraph') {
+        const blink = 0.45 + 0.55 * Math.abs(Math.sin(this.elapsedClock * 11));
+        ctx.strokeStyle = `rgba(255, 138, 36, ${(0.24 + blink * 0.24).toFixed(2)})`;
+        ctx.lineWidth = 14;
+        ctx.beginPath();
+        ctx.arc(this.centerX, this.centerY, r, 0, TAU);
+        ctx.stroke();
+
+        ctx.strokeStyle = `rgba(255, 224, 96, ${(0.55 + blink * 0.45).toFixed(2)})`;
+        ctx.lineWidth = 3;
+        ctx.setLineDash([12, 10]);
+        ctx.lineDashOffset = -this.elapsedClock * 75;
+        ctx.beginPath();
+        ctx.arc(this.centerX, this.centerY, r, 0, TAU);
+        ctx.stroke();
+        ctx.setLineDash([]);
+      } else {
+        // Active scorching solar plasma ring!
+        const flicker = 0.8 + 0.2 * Math.sin(this.elapsedClock * 32);
+        ctx.strokeStyle = `rgba(255, 64, 24, ${(0.35 * flicker).toFixed(2)})`;
+        ctx.lineWidth = 22;
+        ctx.beginPath();
+        ctx.arc(this.centerX, this.centerY, r, 0, TAU);
+        ctx.stroke();
+
+        ctx.strokeStyle = '#FF7B1C';
+        ctx.lineWidth = 10;
+        ctx.beginPath();
+        ctx.arc(this.centerX, this.centerY, r, 0, TAU);
+        ctx.stroke();
+
+        ctx.strokeStyle = '#FFF6B8';
+        ctx.lineWidth = 3.5;
+        ctx.beginPath();
+        ctx.arc(this.centerX, this.centerY, r, 0, TAU);
+        ctx.stroke();
+
+        // Sweeping plasma flare heads along the ring
+        for (let k = 0; k < 3; k++) {
+          const a = f.sweepAngle + (k * TAU) / 3;
+          const fx = this.centerX + Math.cos(a) * r;
+          const fy = this.centerY + Math.sin(a) * r;
+          const flareGlow = ctx.createRadialGradient(fx, fy, 1, fx, fy, 18);
+          flareGlow.addColorStop(0, '#FFFFFF');
+          flareGlow.addColorStop(0.45, '#FFB82E');
+          flareGlow.addColorStop(1, 'rgba(255, 72, 24, 0)');
+          ctx.fillStyle = flareGlow;
+          ctx.beginPath();
+          ctx.arc(fx, fy, 18, 0, TAU);
+          ctx.fill();
+        }
+      }
+      ctx.restore();
+    }
+  }
+
+  private drawWormholeGates(): void {
+    if (this.wormholeGates.length === 0) return;
+    const ctx = this.ctx;
+    const scale = this.outerRadius / 148;
+
+    for (let i = 0; i < this.wormholeGates.length; i++) {
+      const g = this.wormholeGates[i];
+      const rA = g.orbit === 0 ? this.innerRadius : this.outerRadius;
+      const ax = this.centerX + Math.cos(g.angle) * rA;
+      const ay = this.centerY + Math.sin(g.angle) * rA;
+
+      const rB = g.targetOrbit === 0 ? this.innerRadius : this.outerRadius;
+      const bx = this.centerX + Math.cos(g.targetAngle) * rB;
+      const by = this.centerY + Math.sin(g.targetAngle) * rB;
+
+      const cooling = g.cooldown > 0;
+
+      // Subtle quantum tether line linking paired gates
+      ctx.save();
+      ctx.strokeStyle = cooling ? 'rgba(160, 190, 240, 0.14)' : 'rgba(104, 240, 255, 0.22)';
+      ctx.lineWidth = 1.4;
+      ctx.setLineDash([5, 7]);
+      ctx.lineDashOffset = -this.elapsedClock * 20;
+      ctx.beginPath();
+      ctx.moveTo(ax, ay);
+      ctx.lineTo(bx, by);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.restore();
+
+      const ends = [
+        { x: ax, y: ay },
+        { x: bx, y: by },
+      ];
+      for (let e = 0; e < ends.length; e++) {
+        const pt = ends[e];
+        ctx.save();
+        ctx.translate(pt.x, pt.y);
+        ctx.globalAlpha = cooling ? 0.45 : 1;
+
+        const glow = ctx.createRadialGradient(0, 0, 2 * scale, 0, 0, 22 * scale);
+        glow.addColorStop(0, '#FFFFFF');
+        glow.addColorStop(0.42, g.color);
+        glow.addColorStop(1, 'rgba(60, 242, 255, 0)');
+        ctx.fillStyle = glow;
+        ctx.beginPath();
+        ctx.arc(0, 0, 22 * scale, 0, TAU);
+        ctx.fill();
+
+        ctx.rotate(this.elapsedClock * (e === 0 ? 2.6 : -2.6));
+        ctx.strokeStyle = g.color;
+        ctx.lineWidth = 2.6 * scale;
+        ctx.setLineDash([8 * scale, 5 * scale]);
+        ctx.beginPath();
+        ctx.arc(0, 0, 13.5 * scale, 0, TAU);
+        ctx.stroke();
+        ctx.setLineDash([]);
+
+        ctx.fillStyle = '#0D144D';
+        ctx.beginPath();
+        ctx.arc(0, 0, 8.5 * scale, 0, TAU);
+        ctx.fill();
+
+        ctx.strokeStyle = '#FFFFFF';
+        ctx.lineWidth = 1.6 * scale;
+        ctx.beginPath();
+        ctx.arc(0, 0, 8.5 * scale, 0, TAU);
+        ctx.stroke();
+
+        ctx.restore();
+      }
+    }
+  }
+
+  private drawBossDebrisRings(): void {
+    if (this.debrisRings.length === 0) return;
+    const ctx = this.ctx;
+
+    for (let i = 0; i < this.debrisRings.length; i++) {
+      const ring = this.debrisRings[i];
+      const fade = Math.max(0.2, 1 - (ring.radius / ring.maxRadius) * 0.4);
+      const startDanger = ring.gapAngle + ring.gapHalfWidth;
+      const endDanger = ring.gapAngle + TAU - ring.gapHalfWidth;
+
+      ctx.save();
+      ctx.globalAlpha = fade;
+
+      // Glowing crimson-orange expanding hazard arc
+      ctx.strokeStyle = 'rgba(255, 72, 36, 0.32)';
+      ctx.lineWidth = 14;
+      ctx.lineCap = 'round';
+      ctx.beginPath();
+      ctx.arc(this.centerX, this.centerY, ring.radius, startDanger, endDanger);
+      ctx.stroke();
+
+      ctx.strokeStyle = '#FF5526';
+      ctx.lineWidth = 6.5;
+      ctx.beginPath();
+      ctx.arc(this.centerX, this.centerY, ring.radius, startDanger, endDanger);
+      ctx.stroke();
+
+      ctx.strokeStyle = '#FFE48C';
+      ctx.lineWidth = 2;
+      ctx.setLineDash([8, 6]);
+      ctx.beginPath();
+      ctx.arc(this.centerX, this.centerY, ring.radius, startDanger, endDanger);
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      // Clear emerald-cyan safe-passage gap guide arc
+      ctx.strokeStyle = 'rgba(84, 255, 178, 0.65)';
+      ctx.lineWidth = 2.6;
+      ctx.setLineDash([4, 5]);
+      ctx.beginPath();
+      ctx.arc(
+        this.centerX,
+        this.centerY,
+        ring.radius,
+        ring.gapAngle - ring.gapHalfWidth + 0.08,
+        ring.gapAngle + ring.gapHalfWidth - 0.08
+      );
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      ctx.restore();
+    }
   }
 
   private drawPortal(): void {
@@ -1506,7 +2229,13 @@ export class OrbitEngine {
     }
   }
 
-  private drawStar(x: number, y: number, scale: number): void {
+  private drawStar(
+    x: number,
+    y: number,
+    scale: number,
+    magnetic: boolean,
+    pulled: boolean
+  ): void {
     const ctx = this.ctx;
     const s = scale * (this.outerRadius / 148);
 
@@ -1514,17 +2243,45 @@ export class OrbitEngine {
     ctx.translate(x, y);
     ctx.scale(s, s);
 
-    // Radiant golden-orange ambient glow halo (matching gameplay mockup stars)
+    if (magnetic) {
+      // Pulsing magenta-cyan magnetic field ring & orbiting mini sparks
+      const pulseR = 20 + Math.sin(this.elapsedClock * 5) * 3;
+      ctx.strokeStyle = pulled ? '#FF8AF7' : 'rgba(220, 128, 255, 0.72)';
+      ctx.lineWidth = pulled ? 2.2 : 1.6;
+      ctx.setLineDash([5, 4]);
+      ctx.beginPath();
+      ctx.arc(0, 0, pulseR, 0, TAU);
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      for (let k = 0; k < 2; k++) {
+        const a = this.elapsedClock * 3.8 + k * Math.PI;
+        ctx.fillStyle = k === 0 ? '#7CEBFF' : '#FF8AF7';
+        ctx.beginPath();
+        ctx.arc(Math.cos(a) * 17.5, Math.sin(a) * 17.5, 2.4, 0, TAU);
+        ctx.fill();
+      }
+    }
+
+    // Radiant golden-orange (or magnetic violet-gold) ambient glow halo
     const halo = ctx.createRadialGradient(0, 0, 3, 0, 0, 24);
-    halo.addColorStop(0, 'rgba(255, 232, 84, 0.65)');
-    halo.addColorStop(0.5, 'rgba(255, 148, 0, 0.26)');
+    halo.addColorStop(0, magnetic ? 'rgba(255, 210, 255, 0.72)' : 'rgba(255, 232, 84, 0.65)');
+    halo.addColorStop(0.5, magnetic ? 'rgba(212, 92, 255, 0.34)' : 'rgba(255, 148, 0, 0.26)');
     halo.addColorStop(1, 'rgba(255, 136, 0, 0)');
     ctx.fillStyle = halo;
     ctx.beginPath();
     ctx.arc(0, 0, 24, 0, TAU);
     ctx.fill();
 
-    this.drawGlowingStarShape(ctx, 0, 0, 14.5, '#FFF57A', '#FF9900', true);
+    this.drawGlowingStarShape(
+      ctx,
+      0,
+      0,
+      14.5,
+      magnetic ? '#FFF5FF' : '#FFF57A',
+      magnetic ? '#FF88E8' : '#FF9900',
+      true
+    );
 
     ctx.restore();
   }
@@ -1717,7 +2474,92 @@ export class OrbitEngine {
       ctx.closePath();
     };
 
-    // Roaring fiery golden thruster plume (with sleek color variants per satellite)
+    ctx.save();
+
+    if (this.trailId === 'prism') {
+      // Multi-band prismatic comet ribbon
+      const bands = [
+        { mult: 1.95, color: 'rgba(255, 77, 136, 0.36)' },
+        { mult: 1.45, color: 'rgba(255, 212, 38, 0.72)' },
+        { mult: 1.0, color: '#3CF2FF' },
+        { mult: 0.48, color: '#FFFFFF' },
+      ];
+      for (let b = 0; b < bands.length; b++) {
+        buildFlamePath(bands[b].mult);
+        ctx.fillStyle = bands[b].color;
+        ctx.fill();
+      }
+      ctx.restore();
+      return;
+    }
+
+    if (this.trailId === 'aurora') {
+      const startPt = this.satTrail[0];
+      const endPt = this.satTrail[len - 1];
+      const auroraOuter = ctx.createLinearGradient(startPt.x, startPt.y, endPt.x, endPt.y);
+      auroraOuter.addColorStop(0, 'rgba(179, 107, 255, 0.08)');
+      auroraOuter.addColorStop(0.5, 'rgba(56, 232, 255, 0.36)');
+      auroraOuter.addColorStop(1, 'rgba(16, 232, 154, 0.45)');
+
+      const auroraMid = ctx.createLinearGradient(startPt.x, startPt.y, endPt.x, endPt.y);
+      auroraMid.addColorStop(0, '#B36BFF');
+      auroraMid.addColorStop(0.5, '#38E8FF');
+      auroraMid.addColorStop(1, '#3DFFBA');
+
+      buildFlamePath(1.85);
+      ctx.fillStyle = auroraOuter;
+      ctx.fill();
+      buildFlamePath(1.05);
+      ctx.fillStyle = auroraMid;
+      ctx.fill();
+      buildFlamePath(0.45);
+      ctx.fillStyle = '#E8FFFF';
+      ctx.fill();
+      ctx.restore();
+      return;
+    }
+
+    if (this.trailId === 'stardust') {
+      buildFlamePath(1.65);
+      ctx.fillStyle = 'rgba(59, 130, 246, 0.32)';
+      ctx.fill();
+      buildFlamePath(0.95);
+      ctx.fillStyle = '#7CEBFF';
+      ctx.fill();
+      buildFlamePath(0.42);
+      ctx.fillStyle = '#FFF5B8';
+      ctx.fill();
+
+      // Twinkling stardust sparkles along the wake
+      if (!this.lowPower) {
+        for (let i = 2; i < len - 1; i += 3) {
+          const pt = this.satTrail[i];
+          const off = Math.sin(i * 2.1 + this.elapsedClock * 6) * 5.5 * scale;
+          ctx.fillStyle = i % 2 === 0 ? '#FFF49E' : '#FFFFFF';
+          ctx.beginPath();
+          ctx.arc(pt.x + off, pt.y - off * 0.7, (1.4 + (i / len) * 1.4) * scale, 0, TAU);
+          ctx.fill();
+        }
+      }
+      ctx.restore();
+      return;
+    }
+
+    if (this.trailId === 'crimson_nova') {
+      buildFlamePath(1.8);
+      ctx.fillStyle = 'rgba(200, 29, 119, 0.38)';
+      ctx.fill();
+      buildFlamePath(1.1);
+      ctx.fillStyle = '#FF5533';
+      ctx.fill();
+      buildFlamePath(0.52);
+      ctx.fillStyle = '#FFE88A';
+      ctx.fill();
+      ctx.restore();
+      return;
+    }
+
+    // Classic Solar Plume (adapts cleanly to equipped craft)
     let outerColor = 'rgba(255, 132, 0, 0.34)';
     let midColor = '#FFB81C';
     let coreColor = '#FFF9BF';
@@ -1733,9 +2575,20 @@ export class OrbitEngine {
       outerColor = 'rgba(130, 186, 255, 0.38)';
       midColor = '#66E3FF';
       coreColor = '#F4FFFF';
+    } else if (this.satelliteId === 'magnet_probe') {
+      outerColor = 'rgba(255, 96, 212, 0.36)';
+      midColor = '#FF74E8';
+      coreColor = '#FFF0FF';
+    } else if (this.satelliteId === 'phase_dasher') {
+      outerColor = 'rgba(168, 92, 255, 0.4)';
+      midColor = '#B47BFF';
+      coreColor = '#F2E8FF';
+    } else if (this.satelliteId === 'star_collector') {
+      outerColor = 'rgba(255, 208, 42, 0.42)';
+      midColor = '#FFE45C';
+      coreColor = '#FFFFFF';
     }
 
-    ctx.save();
     buildFlamePath(1.65);
     ctx.fillStyle = outerColor;
     ctx.fill();
@@ -1769,10 +2622,52 @@ export class OrbitEngine {
       drawScale = scale * Math.max(0.05, 1 - ease * 0.92);
     }
 
-    const tangentAngle = this.satAngle + Math.PI / 2 + this.satWarpProgress * 5.2;
+    // Keep nose oriented along travel direction even when Boss Polarity Flip reverses orbit!
+    const tangentAngle =
+      this.satAngle + (this.orbitDirection === 1 ? Math.PI / 2 : -Math.PI / 2) + this.satWarpProgress * 5.2;
 
     ctx.save();
     ctx.translate(sx, sy);
+
+    // Active Star Magnet Booster or Magnet Probe field ring
+    if ((this.magnetRemaining > 0 || this.satelliteId === 'magnet_probe') && this.satWarpProgress === 0) {
+      const magR =
+        this.magnetRemaining > 0
+          ? this.outerRadius * 0.34
+          : Math.max(24, 30 * (this.outerRadius / 148));
+      ctx.save();
+      ctx.strokeStyle =
+        this.magnetRemaining > 0 ? 'rgba(255, 130, 245, 0.72)' : 'rgba(255, 148, 240, 0.42)';
+      ctx.lineWidth = this.magnetRemaining > 0 ? 2.4 : 1.5;
+      ctx.setLineDash([6, 6]);
+      ctx.lineDashOffset = this.elapsedClock * 32;
+      ctx.beginPath();
+      ctx.arc(0, 0, magR, 0, TAU);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.restore();
+    }
+
+    // Phase Dasher invulnerability aura on lane shifts
+    if (this.phaseInvulnTimer > 0 && this.satWarpProgress === 0) {
+      const phaseR = Math.max(18, 24 * (this.outerRadius / 148));
+      ctx.save();
+      const phaseGrad = ctx.createRadialGradient(0, 0, 2, 0, 0, phaseR * 1.25);
+      phaseGrad.addColorStop(0, 'rgba(216, 152, 255, 0.36)');
+      phaseGrad.addColorStop(0.7, 'rgba(116, 232, 255, 0.22)');
+      phaseGrad.addColorStop(1, 'rgba(116, 232, 255, 0)');
+      ctx.fillStyle = phaseGrad;
+      ctx.beginPath();
+      ctx.arc(0, 0, phaseR * 1.25, 0, TAU);
+      ctx.fill();
+
+      ctx.strokeStyle = '#E0A8FF';
+      ctx.lineWidth = 2.2;
+      ctx.beginPath();
+      ctx.arc(0, 0, phaseR, 0, TAU);
+      ctx.stroke();
+      ctx.restore();
+    }
 
     // Full-obstacle Holographic Cyan Shield Bubble (renders in world space around craft)
     if (this.shieldActive && this.satWarpProgress === 0) {
@@ -1796,6 +2691,10 @@ export class OrbitEngine {
       ctx.stroke();
       ctx.setLineDash([]);
       ctx.restore();
+    }
+
+    if (this.phaseInvulnTimer > 0) {
+      ctx.globalAlpha = 0.72 + Math.sin(this.elapsedClock * 42) * 0.22;
     }
 
     ctx.rotate(tangentAngle);
@@ -1834,7 +2733,7 @@ export class OrbitEngine {
       ctx.restore();
     }
 
-    // Accent colors per satellite class (Classic matches the iconic red-and-white rocket in the mockup!)
+    // Accent colors per satellite class
     let accentBright = '#FF3838';
     let accentDeep = '#B81420';
     let hullLight = '#FFFFFF';
@@ -1863,6 +2762,27 @@ export class OrbitEngine {
       hullShade = '#CBB6F2';
       glassCore = '#7CF8FF';
       glassEdge = '#20B2FF';
+    } else if (this.satelliteId === 'magnet_probe') {
+      accentBright = '#FF52C8';
+      accentDeep = '#B51782';
+      hullLight = '#FFF2FB';
+      hullShade = '#F2B8E4';
+      glassCore = '#66F5FF';
+      glassEdge = '#1B8CFF';
+    } else if (this.satelliteId === 'phase_dasher') {
+      accentBright = '#3CE8FF';
+      accentDeep = '#5A28E8';
+      hullLight = '#EBF8FF';
+      hullShade = '#A9B8F8';
+      glassCore = '#F0A8FF';
+      glassEdge = '#8B2EFF';
+    } else if (this.satelliteId === 'star_collector') {
+      accentBright = '#FFD838';
+      accentDeep = '#D97B00';
+      hullLight = '#FFFCE6';
+      hullShade = '#F2D074';
+      glassCore = '#6CFFBA';
+      glassEdge = '#0FA66E';
     }
 
     // Miniature flickering thruster flame jet at nozzle

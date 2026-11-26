@@ -6,24 +6,27 @@ export interface OrbitCanvasHandle {
   loadLevel: (levelId: number, screen: GameScreen, loadout?: LevelLoadout) => void;
   setScreen: (screen: GameScreen) => void;
   shiftOrbit: () => void;
+  activateChronoPulse: () => void;
+  activateStarMagnet: () => void;
   setLowPower: (enabled: boolean) => void;
 }
 
 interface OrbitCanvasProps {
   lowPower: boolean;
   onHudChange: EngineCallbacks['onHudChange'];
+  onBoosterUsed: EngineCallbacks['onBoosterUsed'];
   onGameOver: EngineCallbacks['onGameOver'];
   onVictory: EngineCallbacks['onVictory'];
   onPointerTap: () => void;
 }
 
 const OrbitCanvasInner = forwardRef<OrbitCanvasHandle, OrbitCanvasProps>(
-  ({ lowPower, onHudChange, onGameOver, onVictory, onPointerTap }, ref) => {
+  ({ lowPower, onHudChange, onBoosterUsed, onGameOver, onVictory, onPointerTap }, ref) => {
     const canvasRef = useRef<HTMLCanvasElement | null>(null);
     const engineRef = useRef<OrbitEngine | null>(null);
-    const callbacksRef = useRef({ onHudChange, onGameOver, onVictory });
+    const callbacksRef = useRef({ onHudChange, onBoosterUsed, onGameOver, onVictory });
 
-    callbacksRef.current = { onHudChange, onGameOver, onVictory };
+    callbacksRef.current = { onHudChange, onBoosterUsed, onGameOver, onVictory };
 
     useImperativeHandle(
       ref,
@@ -36,6 +39,12 @@ const OrbitCanvasInner = forwardRef<OrbitCanvasHandle, OrbitCanvasProps>(
         },
         shiftOrbit() {
           engineRef.current?.shiftOrbit();
+        },
+        activateChronoPulse() {
+          engineRef.current?.activateChronoPulse();
+        },
+        activateStarMagnet() {
+          engineRef.current?.activateStarMagnet();
         },
         setLowPower(enabled) {
           engineRef.current?.setLowPower(enabled);
@@ -50,6 +59,7 @@ const OrbitCanvasInner = forwardRef<OrbitCanvasHandle, OrbitCanvasProps>(
 
       const engine = new OrbitEngine(canvas, {
         onHudChange: (snap) => callbacksRef.current.onHudChange(snap),
+        onBoosterUsed: (kind) => callbacksRef.current.onBoosterUsed(kind),
         onGameOver: (reason, stats) => callbacksRef.current.onGameOver(reason, stats),
         onVictory: (res) => callbacksRef.current.onVictory(res),
       });
@@ -68,12 +78,21 @@ const OrbitCanvasInner = forwardRef<OrbitCanvasHandle, OrbitCanvasProps>(
 
       window.addEventListener('resize', handleResize);
       window.addEventListener('orientationchange', handleResize);
+      window.visualViewport?.addEventListener('resize', handleResize);
       document.addEventListener('visibilitychange', handleVisibility);
+
+      let observer: ResizeObserver | null = null;
+      if (typeof ResizeObserver !== 'undefined' && canvas.parentElement) {
+        observer = new ResizeObserver(handleResize);
+        observer.observe(canvas.parentElement);
+      }
 
       return () => {
         window.removeEventListener('resize', handleResize);
         window.removeEventListener('orientationchange', handleResize);
+        window.visualViewport?.removeEventListener('resize', handleResize);
         document.removeEventListener('visibilitychange', handleVisibility);
+        observer?.disconnect();
         engine.destroy();
         engineRef.current = null;
       };

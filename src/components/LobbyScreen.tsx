@@ -70,7 +70,7 @@ export const LobbyScreen: React.FC<LobbyScreenProps> = ({
       </div>
 
       {/* 1. TOP BAR: Stars & Rockets Glossy Pills (Left) · Music & Sound Glossy Buttons (Right) */}
-      <header className="relative z-30 w-full max-w-[540px] mx-auto px-3.5 pt-3 sm:px-5 sm:pt-4 flex items-center justify-between gap-2">
+      <header className="safe-lobby-top relative z-30 w-full max-w-[540px] mx-auto flex items-center justify-between gap-2 shrink-0">
         {/* Left: Glossy Star & Rocket Currency Pills */}
         <div className="flex items-center gap-2 sm:gap-2.5 min-w-0">
           {/* Stars Pill */}
@@ -181,13 +181,13 @@ export const LobbyScreen: React.FC<LobbyScreenProps> = ({
       </header>
 
       {/* 2. UPPER CENTER: GLOSSY 3D RAINBOW-RINGED POCKET ORBIT LOGO */}
-      <div className="relative z-20 w-full flex justify-center px-6 mt-1 sm:mt-2 select-none pointer-events-none">
+      <div className="relative z-20 w-full flex justify-center px-6 mt-1 sm:mt-2 shrink-0 select-none pointer-events-none">
         <img
           src="./assets/cosmic/logo.png"
           alt="Pocket Orbit"
           referrerPolicy="no-referrer"
           draggable={false}
-          className="w-[245px] sm:w-[300px] md:w-[330px] max-w-[74vw] h-auto object-contain drop-shadow-[0_8px_22px_rgba(32,124,255,0.48)]"
+          className="w-[245px] sm:w-[300px] md:w-[330px] max-w-[74vw] max-h-[16vh] h-auto object-contain drop-shadow-[0_8px_22px_rgba(32,124,255,0.48)]"
         />
       </div>
 
@@ -244,7 +244,7 @@ export const LobbyScreen: React.FC<LobbyScreenProps> = ({
       </div>
 
       {/* 4. LOWER CENTER: JUICY GOLDEN PLAY >> BUTTON + 5-BUTTON GLOSSY ROYAL-BLUE DOCK */}
-      <footer className="relative z-30 w-full max-w-[520px] mx-auto px-2.5 sm:px-5 pb-3 sm:pb-5 flex flex-col items-center gap-3 sm:gap-4">
+      <footer className="safe-lobby-bottom relative z-30 w-full max-w-[520px] mx-auto flex flex-col items-center gap-2.5 sm:gap-4 shrink-0">
         {/* PLAY >> Button sitting prominently over the launchpad */}
         <div className="flex flex-col items-center gap-1">
           <button

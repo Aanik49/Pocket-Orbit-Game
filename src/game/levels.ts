@@ -1,4 +1,5 @@
 import {
+  BossConfig,
   ChapterMeta,
   HazardDef,
   HazardKind,
@@ -6,7 +7,9 @@ import {
   MoonDef,
   OrbitLane,
   PlanetPalette,
+  SolarFlareDef,
   StarDef,
+  WormholeGateDef,
 } from '../types';
 
 export const TOTAL_SECTORS = 6;
@@ -482,7 +485,7 @@ function buildSectorOneLevels(): LevelConfig[] {
       id: 5,
       chapter: 1,
       name: LEVEL_NAMES[4],
-      mechanicNote: 'Hop across lanes to gather stars in one calm sweep',
+      mechanicNote: 'Magnetic stars pull toward you when you shift orbits nearby',
       planetPalette: p[1],
       startOrbit: 1,
       startAngle: baseStart,
@@ -491,9 +494,9 @@ function buildSectorOneLevels(): LevelConfig[] {
       parShifts: 5,
       timeLimit: null,
       stars: [
-        { orbit: 0, angle: 0.35 },
+        { orbit: 0, angle: 0.35, magnetic: true },
         { orbit: 1, angle: 2.05 },
-        { orbit: 0, angle: 3.9 },
+        { orbit: 0, angle: 3.9, magnetic: true },
       ],
       hazards: [
         { orbit: 1, angle: 0.35, speed: 0, type: 'asteroid', size: 12 },
@@ -507,7 +510,7 @@ function buildSectorOneLevels(): LevelConfig[] {
       id: 6,
       chapter: 1,
       name: LEVEL_NAMES[5],
-      mechanicNote: 'Use the outer ring to breathe before shifting inside',
+      mechanicNote: 'Wormhole gates warp your craft to the opposite side of the orbit',
       planetPalette: p[2],
       startOrbit: 0,
       startAngle: baseStart,
@@ -526,13 +529,23 @@ function buildSectorOneLevels(): LevelConfig[] {
         { orbit: 0, angle: 4.1, speed: 0, type: 'buoy', size: 12 },
       ],
       moons: [],
+      wormholeGates: [
+        {
+          id: 's1-g1',
+          orbit: 1,
+          angle: 1.15,
+          targetOrbit: 1,
+          targetAngle: normalizeAngle(1.15 + Math.PI),
+          color: '#3CF2FF',
+        },
+      ],
       portal: { orbit: 0, angle: -0.58 },
     },
     {
       id: 7,
       chapter: 1,
       name: LEVEL_NAMES[6],
-      mechanicNote: 'One slowly drifting rock joins the outer belt',
+      mechanicNote: 'Solar flare sweeps warn before erupting · Shift to the safe ring',
       planetPalette: p[0],
       startOrbit: 1,
       startAngle: baseStart,
@@ -542,7 +555,7 @@ function buildSectorOneLevels(): LevelConfig[] {
       timeLimit: null,
       stars: [
         { orbit: 0, angle: 0.25 },
-        { orbit: 1, angle: 2.15 },
+        { orbit: 1, angle: 2.15, magnetic: true },
         { orbit: 0, angle: 4.0 },
       ],
       hazards: [
@@ -550,13 +563,23 @@ function buildSectorOneLevels(): LevelConfig[] {
         { orbit: 0, angle: 2.75, speed: 0, type: 'panel', size: 12 },
       ],
       moons: [],
+      solarFlares: [
+        {
+          orbit: 0,
+          period: 6.4,
+          telegraphDuration: 1.45,
+          activeDuration: 1.1,
+          initialDelay: 2.3,
+          alternating: true,
+        },
+      ],
       portal: { orbit: 1, angle: -0.5 },
     },
     {
       id: 8,
       chapter: 1,
       name: LEVEL_NAMES[7],
-      mechanicNote: 'A slow satellite drifts with your orbit',
+      mechanicNote: 'A slow satellite drifts with your orbit · Pull magnetic stars mid-shift',
       planetPalette: p[1],
       startOrbit: 1,
       startAngle: baseStart,
@@ -565,9 +588,9 @@ function buildSectorOneLevels(): LevelConfig[] {
       parShifts: 5,
       timeLimit: null,
       stars: [
-        { orbit: 1, angle: 0.3 },
+        { orbit: 1, angle: 0.3, magnetic: true },
         { orbit: 0, angle: 2.1 },
-        { orbit: 1, angle: 3.95 },
+        { orbit: 1, angle: 3.95, magnetic: true },
       ],
       hazards: [
         { orbit: 0, angle: 1.15, speed: 0.24, type: 'buoy', size: 12 },
@@ -580,7 +603,7 @@ function buildSectorOneLevels(): LevelConfig[] {
       id: 9,
       chapter: 1,
       name: LEVEL_NAMES[8],
-      mechanicNote: 'Wait on the slow outer ring to let debris pass',
+      mechanicNote: 'Use the wormhole gate to slip past drifting debris and solar sweeps',
       planetPalette: p[2],
       startOrbit: 0,
       startAngle: baseStart,
@@ -590,7 +613,7 @@ function buildSectorOneLevels(): LevelConfig[] {
       timeLimit: null,
       stars: [
         { orbit: 0, angle: 0.2 },
-        { orbit: 1, angle: 2.2 },
+        { orbit: 1, angle: 2.2, magnetic: true },
         { orbit: 0, angle: 4.15 },
       ],
       hazards: [
@@ -599,24 +622,45 @@ function buildSectorOneLevels(): LevelConfig[] {
         { orbit: 1, angle: 3.9, speed: 0, type: 'buoy', size: 12 },
       ],
       moons: [],
+      wormholeGates: [
+        {
+          id: 's1-g9',
+          orbit: 0,
+          angle: 1.1,
+          targetOrbit: 0,
+          targetAngle: normalizeAngle(1.1 + Math.PI),
+          color: '#A78BFA',
+        },
+      ],
+      solarFlares: [
+        {
+          orbit: 1,
+          period: 6.8,
+          telegraphDuration: 1.4,
+          activeDuration: 1.1,
+          initialDelay: 2.6,
+          alternating: true,
+        },
+      ],
       portal: { orbit: 1, angle: -0.48 },
     },
     {
       id: 10,
       chapter: 1,
       name: LEVEL_NAMES[9],
-      mechanicNote: 'Sector 1 finale · Combine inner bursts and outer patience',
+      mechanicNote: 'BOSS FINALE · Expanding debris ring erupts in Phase 2!',
       planetPalette: p[0],
       startOrbit: 1,
       startAngle: baseStart,
-      innerSpeed: 1.66,
-      outerSpeed: 0.88,
-      parShifts: 6,
+      innerSpeed: 1.68,
+      outerSpeed: 0.9,
+      parShifts: 7,
       timeLimit: null,
       stars: [
-        { orbit: 0, angle: 0.25 },
-        { orbit: 1, angle: 2.1 },
-        { orbit: 0, angle: 4.0 },
+        { orbit: 0, angle: 0.25, magnetic: true },
+        { orbit: 1, angle: 1.85 },
+        { orbit: 0, angle: 3.35, magnetic: true },
+        { orbit: 1, angle: 4.95 },
       ],
       hazards: [
         { orbit: 0, angle: 1.35, speed: -0.28, type: 'asteroid', size: 12 },
@@ -624,6 +668,24 @@ function buildSectorOneLevels(): LevelConfig[] {
         { orbit: 0, angle: 4.75, speed: 0, type: 'buoy', size: 12 },
       ],
       moons: [],
+      wormholeGates: [
+        {
+          id: 's1-boss-g',
+          orbit: 1,
+          angle: 0.85,
+          targetOrbit: 1,
+          targetAngle: normalizeAngle(0.85 + Math.PI),
+          color: '#3CF2FF',
+        },
+      ],
+      boss: {
+        title: 'Belt Sovereign',
+        subtitle: '2-Phase Core · Expanding Debris Ring',
+        phases: 2,
+        events: ['debris_ring'],
+        ringInterval: 5.2,
+        bonusRockets: 10,
+      },
       portal: { orbit: 1, angle: -0.52 },
     },
   ];
@@ -675,9 +737,12 @@ function buildSectorTwoToSixLevel(id: number): LevelConfig {
     timeLimit = Math.round(21 - ((inChapter - 1) / 9) * 5);
   }
 
-  // Stars: 3 stars normally, 4 stars on sector climaxes (30, 40, 50, 58, 60)
-  const starCount = id === 30 || id === 40 || id === 50 || id === 58 || id === 60 ? 4 : 3;
+  const isBoss = inChapter === 10;
+
+  // Stars: 3 stars normally, 4 stars on all Boss Finales (20, 30, 40, 50, 60) and Lv. 58
+  const starCount = isBoss || id === 58 ? 4 : 3;
   const hasDriftingStars = (chapter === 4 && inChapter >= 6) || chapter >= 5;
+  const hasMagneticStars = isBoss || inChapter === 2 || inChapter === 5 || inChapter === 8;
   const stars: StarDef[] = [];
   const starBaseOffset = 0.18 + seeded(id * 3.7) * 0.36;
 
@@ -692,7 +757,8 @@ function buildSectorTwoToSixLevel(id: number): LevelConfig {
       hasDriftingStars && (i % 2 === 1 || id >= 55)
         ? Number(((i % 2 === 0 ? 1 : -1) * (0.16 + progress * 0.14)).toFixed(2))
         : 0;
-    stars.push({ orbit, angle, speed: drift });
+    const magnetic = hasMagneticStars && (i % 2 === 0 || isBoss);
+    stars.push({ orbit, angle, speed: drift, magnetic });
   }
 
   // Redesigned hazard layouts:
@@ -861,6 +927,97 @@ function buildSectorTwoToSixLevel(id: number): LevelConfig {
     }
   }
 
+  // Solar Flares (periodic telegraphed lane sweeps)
+  const solarFlares: SolarFlareDef[] = [];
+  if (
+    (chapter === 2 && (inChapter === 4 || inChapter === 7)) ||
+    (chapter >= 3 && (inChapter === 3 || inChapter === 6 || inChapter === 9)) ||
+    (isBoss && chapter >= 3)
+  ) {
+    const startLane: OrbitLane = (id % 2) as OrbitLane;
+    solarFlares.push({
+      orbit: startLane,
+      period: Math.max(5.0, 6.8 - chapter * 0.26),
+      telegraphDuration: Math.max(1.25, 1.45 - chapter * 0.03),
+      activeDuration: 1.05,
+      initialDelay: isBoss ? 2.4 : 2.1,
+      alternating: chapter >= 2,
+    });
+  }
+
+  // Wormhole Gates (paired teleport gates to opposite side of the orbit)
+  const wormholeGates: WormholeGateDef[] = [];
+  if (
+    inChapter === 3 ||
+    inChapter === 6 ||
+    inChapter === 8 ||
+    (isBoss && (chapter === 2 || chapter === 5 || chapter === 6))
+  ) {
+    const gateOrbit: OrbitLane = ((id + 1) % 2) as OrbitLane;
+    const gateAngle = normalizeAngle(startAngle + 1.55 + seeded(id * 19) * 0.5);
+    wormholeGates.push({
+      id: `s${chapter}-l${id}-g1`,
+      orbit: gateOrbit,
+      angle: gateAngle,
+      targetOrbit: gateOrbit,
+      targetAngle: normalizeAngle(gateAngle + Math.PI),
+      color: chapter % 2 === 0 ? '#A78BFA' : '#3CF2FF',
+    });
+  }
+
+  // Sector Boss Finales (Levels 20, 30, 40, 50, 60)
+  let boss: BossConfig | undefined;
+  if (isBoss) {
+    if (chapter === 2) {
+      boss = {
+        title: 'Nebula Reverser',
+        subtitle: '2-Phase Core · Polarity Flip + Wormholes',
+        phases: 2,
+        events: ['polarity_flip'],
+        polarityFlipPhase: 2,
+        bonusRockets: 10,
+      };
+    } else if (chapter === 3) {
+      boss = {
+        title: 'Solar Warden',
+        subtitle: '3-Phase Core · Solar Flares & Debris Ring',
+        phases: 3,
+        events: ['solar_surge', 'debris_ring'],
+        ringInterval: 5.0,
+        bonusRockets: 12,
+      };
+    } else if (chapter === 4) {
+      boss = {
+        title: 'Tidal Overlord',
+        subtitle: '3-Phase Core · Polarity Flip & Debris Ring',
+        phases: 3,
+        events: ['polarity_flip', 'debris_ring'],
+        polarityFlipPhase: 2,
+        ringInterval: 4.8,
+        bonusRockets: 15,
+      };
+    } else if (chapter === 5) {
+      boss = {
+        title: 'Binary Singularity',
+        subtitle: '3-Phase Core · Polarity Flip + Solar Surge',
+        phases: 3,
+        events: ['solar_surge', 'polarity_flip'],
+        polarityFlipPhase: 3,
+        bonusRockets: 18,
+      };
+    } else {
+      boss = {
+        title: "Kepler's Sovereign",
+        subtitle: 'Final 3-Phase Core · All Orbital Anomalies',
+        phases: 3,
+        events: ['debris_ring', 'polarity_flip', 'solar_surge'],
+        polarityFlipPhase: 2,
+        ringInterval: 4.4,
+        bonusRockets: 25,
+      };
+    }
+  }
+
   // Wormhole portal (moves gently in Sector 5-6 climaxes)
   const portalOrbit: OrbitLane = ((id + 1) % 2) as OrbitLane;
   const portalAngle = normalizeAngle(startAngle + 0.58 + seeded(id * 17) * 0.42);
@@ -871,7 +1028,17 @@ function buildSectorTwoToSixLevel(id: number): LevelConfig {
     : 0;
 
   let mechanicNote = 'Calm timing between orbital lanes';
-  if (chapter === 2) {
+  if (boss) {
+    mechanicNote = `BOSS: ${boss.title} · ${boss.subtitle}`;
+  } else if (solarFlares.length > 0 && wormholeGates.length > 0) {
+    mechanicNote = `Wormhole warp + Solar flare sweeps${timeLimit ? ` (${timeLimit}s)` : ''}`;
+  } else if (solarFlares.length > 0) {
+    mechanicNote = `Solar flare sweeps ahead · Shift before eruption${timeLimit ? ` (${timeLimit}s)` : ''}`;
+  } else if (wormholeGates.length > 0) {
+    mechanicNote = `Wormhole gates warp across the orbit${timeLimit ? ` (${timeLimit}s)` : ''}`;
+  } else if (hasMagneticStars) {
+    mechanicNote = `Magnetic star clusters pull in on nearby shifts${timeLimit ? ` (${timeLimit}s)` : ''}`;
+  } else if (chapter === 2) {
     mechanicNote = 'Gentle drifting debris · Switch lanes early';
   } else if (chapter === 3) {
     mechanicNote = `Timed Sector (${timeLimit}s) · Ride the fast inner ring to beat the clock`;
@@ -883,7 +1050,7 @@ function buildSectorTwoToSixLevel(id: number): LevelConfig {
     mechanicNote = `Kepler Mastery (${timeLimit}s) · Precision rhythm at full speed`;
   }
 
-  const parShifts = Math.min(10, starCount + 2 + Math.floor(chapter * 0.55));
+  const parShifts = Math.min(11, starCount + 2 + Math.floor(chapter * 0.55) + (isBoss ? 1 : 0));
 
   return sanitizeLevel({
     id,
@@ -900,6 +1067,9 @@ function buildSectorTwoToSixLevel(id: number): LevelConfig {
     stars,
     hazards,
     moons,
+    solarFlares: solarFlares.length > 0 ? solarFlares : undefined,
+    wormholeGates: wormholeGates.length > 0 ? wormholeGates : undefined,
+    boss,
     portal: {
       orbit: portalOrbit,
       angle: portalAngle,

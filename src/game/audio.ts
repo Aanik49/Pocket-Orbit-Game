@@ -365,6 +365,174 @@ export class SpaceAudio {
       osc.stop(start + 0.64);
     });
   }
+
+  /** Shimmering sci-fi warp whoosh when teleporting through a Wormhole Gate */
+  playWarpGate(): void {
+    if (this.sfxMuted) return;
+    this.unlock();
+    if (!this.ctx) return;
+
+    const now = this.ctx.currentTime;
+    const osc = this.ctx.createOscillator();
+    const osc2 = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
+
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(320, now);
+    osc.frequency.exponentialRampToValueAtTime(1180, now + 0.14);
+    osc.frequency.exponentialRampToValueAtTime(520, now + 0.28);
+
+    osc2.type = 'triangle';
+    osc2.frequency.setValueAtTime(640, now);
+    osc2.frequency.exponentialRampToValueAtTime(1480, now + 0.16);
+
+    gain.gain.setValueAtTime(0.0001, now);
+    gain.gain.linearRampToValueAtTime(0.12, now + 0.03);
+    gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.3);
+
+    osc.connect(gain);
+    osc2.connect(gain);
+    gain.connect(this.ctx.destination);
+    osc.start(now);
+    osc2.start(now);
+    osc.stop(now + 0.32);
+    osc2.stop(now + 0.32);
+  }
+
+  /** Crisp solar flare telegraph chirp */
+  playSolarFlareWarn(): void {
+    if (this.sfxMuted) return;
+    this.unlock();
+    if (!this.ctx) return;
+
+    const now = this.ctx.currentTime;
+    const osc = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
+
+    osc.type = 'triangle';
+    osc.frequency.setValueAtTime(540, now);
+    osc.frequency.linearRampToValueAtTime(760, now + 0.14);
+
+    gain.gain.setValueAtTime(0.0001, now);
+    gain.gain.linearRampToValueAtTime(0.075, now + 0.02);
+    gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.18);
+
+    osc.connect(gain);
+    gain.connect(this.ctx.destination);
+    osc.start(now);
+    osc.stop(now + 0.19);
+  }
+
+  /** Scorching plasma eruption sweep when solar flare goes active */
+  playSolarFlareBlast(): void {
+    if (this.sfxMuted) return;
+    this.unlock();
+    if (!this.ctx) return;
+
+    const now = this.ctx.currentTime;
+    const osc = this.ctx.createOscillator();
+    const sub = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
+
+    osc.type = 'sawtooth';
+    osc.frequency.setValueAtTime(220, now);
+    osc.frequency.exponentialRampToValueAtTime(92, now + 0.38);
+
+    sub.type = 'sine';
+    sub.frequency.setValueAtTime(110, now);
+    sub.frequency.exponentialRampToValueAtTime(55, now + 0.38);
+
+    const filter = this.ctx.createBiquadFilter();
+    filter.type = 'lowpass';
+    filter.frequency.setValueAtTime(780, now);
+
+    gain.gain.setValueAtTime(0.0001, now);
+    gain.gain.linearRampToValueAtTime(0.11, now + 0.04);
+    gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.42);
+
+    osc.connect(filter);
+    sub.connect(filter);
+    filter.connect(gain);
+    gain.connect(this.ctx.destination);
+
+    osc.start(now);
+    sub.start(now);
+    osc.stop(now + 0.44);
+    sub.stop(now + 0.44);
+  }
+
+  /** Resonant boss polarity-flip / phase transition chord */
+  playBossPhase(): void {
+    if (this.sfxMuted) return;
+    this.unlock();
+    if (!this.ctx) return;
+
+    const freqs = [293.66, 220.0, 440.0, 587.33];
+    freqs.forEach((f, idx) => {
+      if (!this.ctx) return;
+      const start = this.ctx.currentTime + idx * 0.06;
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.type = idx % 2 === 0 ? 'triangle' : 'sine';
+      osc.frequency.setValueAtTime(f, start);
+      gain.gain.setValueAtTime(0.0001, start);
+      gain.gain.linearRampToValueAtTime(0.095, start + 0.03);
+      gain.gain.exponentialRampToValueAtTime(0.0001, start + 0.42);
+      osc.connect(gain);
+      gain.connect(this.ctx.destination);
+      osc.start(start);
+      osc.stop(start + 0.44);
+    });
+  }
+
+  /** Time-dilation pitch drop for Slow-Mo Chrono Pulse booster */
+  playChronoSlow(): void {
+    if (this.sfxMuted) return;
+    this.unlock();
+    if (!this.ctx) return;
+
+    const now = this.ctx.currentTime;
+    const osc = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
+
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(620, now);
+    osc.frequency.exponentialRampToValueAtTime(165, now + 0.36);
+
+    gain.gain.setValueAtTime(0.0001, now);
+    gain.gain.linearRampToValueAtTime(0.13, now + 0.03);
+    gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.4);
+
+    osc.connect(gain);
+    gain.connect(this.ctx.destination);
+    osc.start(now);
+    osc.stop(now + 0.42);
+  }
+
+  /** Magnetic shimmer pulse for Star Magnet booster */
+  playMagnetPulse(): void {
+    if (this.sfxMuted) return;
+    this.unlock();
+    if (!this.ctx) return;
+
+    const freqs = [392.0, 523.25, 783.99];
+    freqs.forEach((f, idx) => {
+      if (!this.ctx) return;
+      const start = this.ctx.currentTime + idx * 0.045;
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(f, start);
+      osc.frequency.exponentialRampToValueAtTime(f * 1.12, start + 0.22);
+      gain.gain.setValueAtTime(0.0001, start);
+      gain.gain.linearRampToValueAtTime(0.09, start + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.0001, start + 0.26);
+      osc.connect(gain);
+      gain.connect(this.ctx.destination);
+      osc.start(start);
+      osc.stop(start + 0.28);
+    });
+  }
 }
 
 export const spaceAudio = new SpaceAudio();

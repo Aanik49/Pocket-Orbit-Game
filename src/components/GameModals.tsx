@@ -35,7 +35,7 @@ export const PauseModal: React.FC<PauseModalProps> = ({
       role="dialog"
       aria-modal="true"
       aria-label="Game Paused"
-      className="fixed inset-0 z-30 bg-[#040724]/75 backdrop-blur-[2px] flex items-center justify-center p-4"
+      className="safe-modal-pad fixed inset-0 z-30 bg-[#040724]/75 backdrop-blur-[2px] flex items-center justify-center"
     >
       <div className="animate-modal-enter cosmic-modal-frame w-full max-w-[316px]">
         <div className="cosmic-modal-inner overflow-hidden">
@@ -150,13 +150,14 @@ export const GameOverModal: React.FC<GameOverModalProps> = ({
   onReturnTitle,
 }) => {
   const isTimeout = reason === 'timeout';
+  const isFlare = reason === 'flare';
 
   return (
     <div
       role="dialog"
       aria-modal="true"
-      aria-label={isTimeout ? 'Time Expired' : 'Orbit Interrupted'}
-      className="fixed inset-0 z-30 bg-[#040724]/78 backdrop-blur-[2px] flex items-center justify-center p-4"
+      aria-label={isTimeout ? 'Time Expired' : isFlare ? 'Solar Flare Impact' : 'Orbit Interrupted'}
+      className="safe-modal-pad fixed inset-0 z-30 bg-[#040724]/78 backdrop-blur-[2px] flex items-center justify-center"
     >
       <div className="animate-modal-enter cosmic-modal-frame w-full max-w-[316px]">
         <div className="cosmic-modal-inner p-4 sm:p-5 text-center">
@@ -164,12 +165,14 @@ export const GameOverModal: React.FC<GameOverModalProps> = ({
             Sector {level.chapter} · Level {String(level.id).padStart(2, '0')} · {level.name}
           </div>
           <h2 className="font-display text-2xl font-extrabold text-[#FFF2C9] mt-0.5 drop-shadow-[0_2px_0_rgba(12,18,74,0.85)]">
-            {isTimeout ? 'Time Expired' : 'Orbit Broken'}
+            {isTimeout ? 'Time Expired' : isFlare ? 'Solar Flare Hit' : 'Orbit Broken'}
           </h2>
           <p className="text-[11px] font-semibold text-[#98D9FF] mt-1.5 leading-relaxed">
             {isTimeout
-              ? 'Ride the fast inner orbit to save seconds, or equip Nano Stopper to turn off the timer.'
-              : 'Shift lanes a fraction earlier, or arm a Shield / Heavy craft in Loadout.'}
+              ? 'Ride the fast inner orbit, trigger Slow-Mo, or equip Nano Stopper to turn off the timer.'
+              : isFlare
+                ? 'Shift off the glowing lane when the Solar Flare warns, or dash through with Phase Dasher / Shield.'
+                : 'Shift lanes earlier, use Slow-Mo for tight gaps, or equip Phase Dasher / Shield in Loadout.'}
           </p>
 
           <div className="flex flex-col gap-2.5 mt-4">
@@ -243,7 +246,7 @@ export const VictoryModal: React.FC<VictoryModalProps> = ({
       role="dialog"
       aria-modal="true"
       aria-label="Level Cleared"
-      className="fixed inset-0 z-30 bg-[#040724]/78 backdrop-blur-[2px] flex items-center justify-center p-4"
+      className="safe-modal-pad fixed inset-0 z-30 bg-[#040724]/78 backdrop-blur-[2px] flex items-center justify-center"
     >
       <div className="animate-modal-enter cosmic-modal-frame w-full max-w-[316px]">
         <div className="cosmic-modal-inner p-4 sm:p-5 text-center">
@@ -287,17 +290,23 @@ export const VictoryModal: React.FC<VictoryModalProps> = ({
             })}
           </div>
 
-          {/* Lobby Reward Chips */}
-          <div className="flex flex-wrap items-center justify-center gap-1.5 mt-2.5">
-            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-[#1C287A] border border-[#FFD426] font-mono-num text-[11px] font-bold text-[#FFE878]">
-              <PaperStarIcon className="w-3.5 h-3.5" />
-              +{summary.starsAddedToLobby} Lobby Stars
+          {/* Lobby Reward Readout */}
+          <div className="flex flex-wrap items-center justify-center gap-2 mt-2.5 text-[11px] font-mono-num font-bold">
+            <span className="inline-flex items-center gap-1 text-[#FFE878]">
+              <PaperStarIcon className="w-3.5 h-3.5" />+{summary.starsAddedToLobby} Lobby Stars
+              {summary.craftBonusStars > 0 && ` (+${summary.craftBonusStars} Collector)`}
             </span>
 
+            {summary.bossBonusRockets > 0 && (
+              <span className="inline-flex items-center gap-1 text-[#FFB878]">
+                <PaperRocketIcon className="w-3.5 h-3.5" />+{summary.bossBonusRockets} Boss Bounty
+              </span>
+            )}
+
             {summary.sectorBonusRockets > 0 && (
-              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-[#4A1C54] border border-[#FF7B42] font-mono-num text-[11px] font-bold text-[#FFD0B0]">
-                <PaperRocketIcon className="w-3.5 h-3.5" />
-                +{summary.sectorBonusRockets} Sector Clear Bonus!
+              <span className="inline-flex items-center gap-1 text-[#FFD0B0]">
+                <PaperRocketIcon className="w-3.5 h-3.5" />+{summary.sectorBonusRockets} Sector
+                Clear
               </span>
             )}
           </div>

@@ -5,10 +5,11 @@
   "description": "A zen minimalist orbital timing game across 50 handcrafted sectors.",
   "start_url": "./",
   "scope": "./",
-  "display": "standalone",
+  "display": "fullscreen",
+  "display_override": ["fullscreen", "standalone"],
   "orientation": "portrait",
-  "background_color": "#232942",
-  "theme_color": "#232942",
+  "background_color": "#080C38",
+  "theme_color": "#080C38",
   "categories": ["games"],
   "icons": [
     {

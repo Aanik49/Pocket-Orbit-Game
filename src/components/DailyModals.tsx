@@ -28,7 +28,7 @@ export const DailyLoginModal: React.FC<DailyLoginModalProps> = ({
       role="dialog"
       aria-modal="true"
       aria-label="Daily Login Rewards"
-      className="fixed inset-0 z-40 bg-[#040724]/78 backdrop-blur-[2px] flex items-center justify-center p-4"
+      className="safe-modal-pad fixed inset-0 z-40 bg-[#040724]/78 backdrop-blur-[2px] flex items-center justify-center"
       onClick={onClose}
     >
       <div
@@ -177,7 +177,7 @@ export const DailyMissionModal: React.FC<DailyMissionModalProps> = ({
       role="dialog"
       aria-modal="true"
       aria-label="Daily Missions"
-      className="fixed inset-0 z-40 bg-[#040724]/78 backdrop-blur-[2px] flex items-center justify-center p-4"
+      className="safe-modal-pad fixed inset-0 z-40 bg-[#040724]/78 backdrop-blur-[2px] flex items-center justify-center"
       onClick={onClose}
     >
       <div

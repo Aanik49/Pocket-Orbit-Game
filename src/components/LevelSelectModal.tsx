@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, Check, Lock } from 'lucide-react';
+import { X, Check, Lock, Crown } from 'lucide-react';
 import { CHAPTERS, LEVELS, TOTAL_LEVELS, TOTAL_SECTORS } from '../game/levels';
 import { getChapterClearedCount, isChapterUnlocked } from '../game/storage';
 import { LevelRecord } from '../types';
@@ -38,14 +38,13 @@ export const LevelSelectModal: React.FC<LevelSelectModalProps> = ({
       role="dialog"
       aria-modal="true"
       aria-label="Select Sector"
-      className="fixed inset-0 z-40 bg-[#040724]/78 backdrop-blur-[2px] flex items-center justify-center p-4"
+      className="safe-modal-pad fixed inset-0 z-40 bg-[#040724]/78 backdrop-blur-[2px] flex items-center justify-center"
       onClick={onClose}
     >
       <div
         onClick={(e) => e.stopPropagation()}
         className="animate-modal-enter cosmic-modal-frame relative w-full max-w-[380px] max-h-[82dvh] flex flex-col"
       >
-        {/* Uniform Compact Solid Orange-Red Close Button */}
         <button
           type="button"
           onClick={onClose}
@@ -56,7 +55,6 @@ export const LevelSelectModal: React.FC<LevelSelectModalProps> = ({
         </button>
 
         <div className="cosmic-modal-inner p-3.5 sm:p-4 flex flex-col max-h-[calc(82dvh-5px)] overflow-hidden">
-          {/* Header */}
           <div className="shrink-0 text-center pb-2.5 border-b border-[#3D58C4]/50">
             <h2 className="font-display text-xl sm:text-2xl font-extrabold text-[#FFCC29] tracking-tight drop-shadow-[0_2px_0_#A63A00]">
               Sector Atlas
@@ -66,7 +64,6 @@ export const LevelSelectModal: React.FC<LevelSelectModalProps> = ({
             </p>
           </div>
 
-          {/* 6 Sector Segmented Tabs */}
           <div
             role="tablist"
             aria-label="Orbital Sectors"
@@ -97,7 +94,6 @@ export const LevelSelectModal: React.FC<LevelSelectModalProps> = ({
             })}
           </div>
 
-          {/* Active Sector Heading & Unlock Status */}
           <div className="shrink-0 flex items-baseline justify-between gap-2 mt-2.5 mb-2">
             <div className="min-w-0">
               <h3 className="font-display text-sm sm:text-base font-extrabold text-[#FFB82E]">
@@ -118,11 +114,11 @@ export const LevelSelectModal: React.FC<LevelSelectModalProps> = ({
             </span>
           </div>
 
-          {/* 10-Level Grid */}
           <div className="min-h-0 flex-1 grid grid-cols-2 gap-2 overflow-y-auto py-0.5 pr-0.5">
             {chapterLevels.map((lvl) => {
               const rec = records[lvl.id];
               const isSelected = lvl.id === currentLevelId && chapterUnlocked;
+              const isBoss = Boolean(lvl.boss);
               const earnedStars = rec?.completed ? Math.max(1, Math.min(3, rec.stars || 1)) : 0;
 
               return (
@@ -141,9 +137,11 @@ export const LevelSelectModal: React.FC<LevelSelectModalProps> = ({
                       ? 'bg-[#121959]/65 border border-[#3E4F9E]/55 opacity-75 cursor-not-allowed'
                       : isSelected
                         ? 'glossy-btn-gold active:translate-y-0.5'
-                        : rec?.completed
-                          ? 'glossy-btn-blue active:translate-y-0.5'
-                          : 'bg-[#151E6B]/85 border-[1.5px] border-[#4A61C4]/70 hover:border-[#6CE5FF] hover:bg-[#1B2884] active:translate-y-0.5'
+                        : isBoss && !rec?.completed
+                          ? 'bg-[#461336]/92 border-[1.5px] border-[#FF6B42] hover:border-[#FFD426] active:translate-y-0.5'
+                          : rec?.completed
+                            ? 'glossy-btn-blue active:translate-y-0.5'
+                            : 'bg-[#151E6B]/85 border-[1.5px] border-[#4A61C4]/70 hover:border-[#6CE5FF] hover:bg-[#1B2884] active:translate-y-0.5'
                   }`}
                 >
                   <div className="flex items-center justify-between gap-1 w-full min-w-0">
@@ -154,13 +152,26 @@ export const LevelSelectModal: React.FC<LevelSelectModalProps> = ({
                             ? 'text-[#7A8CC2]'
                             : isSelected
                               ? 'text-[#4A1C00]'
-                              : rec?.completed
-                                ? 'text-white'
-                                : 'text-[#89A4E8]'
+                              : isBoss
+                                ? 'text-[#FFD426]'
+                                : rec?.completed
+                                  ? 'text-white'
+                                  : 'text-[#89A4E8]'
                         }`}
                       >
                         {String(lvl.id).padStart(2, '0')}
                       </span>
+
+                      {isBoss && (
+                        <span
+                          className={`inline-flex items-center gap-0.5 text-[9px] font-display font-extrabold shrink-0 ${
+                            isSelected ? 'text-[#7A2200]' : 'text-[#FF9E57]'
+                          }`}
+                        >
+                          <Crown className="w-2.5 h-2.5" aria-hidden="true" />
+                          BOSS
+                        </span>
+                      )}
 
                       {chapterUnlocked && rec?.completed && (
                         <span
@@ -209,7 +220,7 @@ export const LevelSelectModal: React.FC<LevelSelectModalProps> = ({
                         ? 'text-[#8495C8]'
                         : isSelected
                           ? 'text-[#4A1C00]'
-                          : rec?.completed
+                          : rec?.completed || isBoss
                             ? 'text-white'
                             : 'text-[#B5C8F5]'
                     }`}

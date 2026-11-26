@@ -1,4 +1,5 @@
 import {
+  BoosterKind,
   DailyLoginState,
   DailyMissionItem,
   DailyMissionState,
@@ -6,9 +7,15 @@ import {
   MissionMetric,
   SaveData,
   SatelliteId,
+  TrailId,
 } from '../types';
-import { CHAPTERS, TOTAL_LEVELS, TOTAL_SECTORS } from './levels';
-import { getSatelliteById, isSatelliteUnlockedForPurchase, SHIELD_COST_ROCKETS } from './satellites';
+import { CHAPTERS, getLevelById, TOTAL_LEVELS, TOTAL_SECTORS } from './levels';
+import {
+  getBoosterCost,
+  getSatelliteById,
+  getTrailById,
+  isSatelliteUnlockedForPurchase,
+} from './satellites';
 
 const STORAGE_KEY = 'pocket_orbit_save_v2';
 const LEGACY_STORAGE_KEY = 'pocket_orbit_save_v1';
@@ -109,9 +116,13 @@ function createDefaultSave(): SaveData {
     lowPower: false,
     stars: INITIAL_STARS,
     rockets: INITIAL_ROCKETS,
-    shields: 0,
+    shields: 1,
+    chronoPulses: 2,
+    starMagnets: 2,
     ownedSatellites: ['default'],
     selectedSatellite: 'default',
+    ownedTrails: ['classic'],
+    selectedTrail: 'classic',
     claimedSectorBonuses: [],
     dailyLogin: {
       lastClaimDate: null,
@@ -310,28 +321,74 @@ export function equipSatellite(prev: SaveData, satelliteId: SatelliteId): SaveDa
   return next;
 }
 
-export function buyShields(prev: SaveData, quantity: number): SaveData {
-  const qty = Math.max(0, Math.floor(quantity));
-  const totalCost = qty * SHIELD_COST_ROCKETS;
-  if (qty <= 0 || prev.rockets < totalCost) return prev;
+export function buyTrail(prev: SaveData, trailId: TrailId): SaveData {
+  if (prev.ownedTrails.includes(trailId)) return prev;
+  const def = getTrailById(trailId);
+  if (prev.stars < def.costStars) return prev;
 
   const next: SaveData = {
     ...prev,
-    rockets: prev.rockets - totalCost,
-    shields: prev.shields + qty,
+    stars: prev.stars - def.costStars,
+    ownedTrails: [...prev.ownedTrails, trailId],
+    selectedTrail: trailId,
   };
   persistSaveData(next);
   return next;
 }
 
-export function consumeOneShield(prev: SaveData): SaveData {
-  if (prev.shields <= 0) return prev;
+export function equipTrail(prev: SaveData, trailId: TrailId): SaveData {
+  if (!prev.ownedTrails.includes(trailId)) return prev;
+  if (prev.selectedTrail === trailId) return prev;
   const next: SaveData = {
     ...prev,
-    shields: prev.shields - 1,
+    selectedTrail: trailId,
   };
   persistSaveData(next);
   return next;
+}
+
+export function buyBooster(prev: SaveData, kind: BoosterKind, quantity: number): SaveData {
+  const qty = Math.max(0, Math.floor(quantity));
+  const unitCost = getBoosterCost(kind);
+  const totalCost = qty * unitCost;
+  if (qty <= 0 || prev.rockets < totalCost) return prev;
+
+  const next: SaveData = {
+    ...prev,
+    rockets: prev.rockets - totalCost,
+    shields: kind === 'shield' ? prev.shields + qty : prev.shields,
+    chronoPulses: kind === 'chrono' ? prev.chronoPulses + qty : prev.chronoPulses,
+    starMagnets: kind === 'magnet' ? prev.starMagnets + qty : prev.starMagnets,
+  };
+  persistSaveData(next);
+  return next;
+}
+
+export function consumeBooster(prev: SaveData, kind: BoosterKind): SaveData {
+  if (kind === 'shield') {
+    if (prev.shields <= 0) return prev;
+    const next = { ...prev, shields: prev.shields - 1 };
+    persistSaveData(next);
+    return next;
+  }
+  if (kind === 'chrono') {
+    if (prev.chronoPulses <= 0) return prev;
+    const next = { ...prev, chronoPulses: prev.chronoPulses - 1 };
+    persistSaveData(next);
+    return next;
+  }
+  if (prev.starMagnets <= 0) return prev;
+  const next = { ...prev, starMagnets: prev.starMagnets - 1 };
+  persistSaveData(next);
+  return next;
+}
+
+export function buyShields(prev: SaveData, quantity: number): SaveData {
+  return buyBooster(prev, 'shield', quantity);
+}
+
+export function consumeOneShield(prev: SaveData): SaveData {
+  return consumeBooster(prev, 'shield');
 }
 
 export function loadSaveData(): SaveData {
@@ -365,7 +422,16 @@ export function loadSaveData(): SaveData {
         ? parsed.selectedSatellite
         : 'default';
 
-    // Preserve previously completed sectors so they don't re-trigger retroactively unless cleared now
+    const ownedTrails: TrailId[] =
+      Array.isArray(parsed.ownedTrails) && parsed.ownedTrails.length > 0
+        ? Array.from(new Set<TrailId>(['classic', ...parsed.ownedTrails]))
+        : ['classic'];
+
+    const selectedTrail: TrailId =
+      parsed.selectedTrail && ownedTrails.includes(parsed.selectedTrail)
+        ? parsed.selectedTrail
+        : 'classic';
+
     const claimedSectorBonuses = Array.isArray(parsed.claimedSectorBonuses)
       ? parsed.claimedSectorBonuses.filter((n): n is number => typeof n === 'number')
       : [];
@@ -410,8 +476,18 @@ export function loadSaveData(): SaveData {
         typeof parsed.shields === 'number' && Number.isFinite(parsed.shields)
           ? Math.max(0, Math.floor(parsed.shields))
           : 0,
+      chronoPulses:
+        typeof parsed.chronoPulses === 'number' && Number.isFinite(parsed.chronoPulses)
+          ? Math.max(0, Math.floor(parsed.chronoPulses))
+          : 2,
+      starMagnets:
+        typeof parsed.starMagnets === 'number' && Number.isFinite(parsed.starMagnets)
+          ? Math.max(0, Math.floor(parsed.starMagnets))
+          : 2,
       ownedSatellites,
       selectedSatellite,
+      ownedTrails,
+      selectedTrail,
       claimedSectorBonuses,
       dailyLogin,
       dailyMissions,
@@ -442,6 +518,8 @@ export function recordLevelCompletion(
   isNewBestTime: boolean;
   isNewBestShifts: boolean;
   starsAddedToLobby: number;
+  craftBonusStars: number;
+  bossBonusRockets: number;
   sectorBonusRockets: number;
   completedSectorTitle: string | null;
 } {
@@ -470,8 +548,14 @@ export function recordLevelCompletion(
     [levelId]: updatedRecord,
   };
 
-  // Every level completion adds its earned mastery stars directly to lobby stars
-  const starsAddedToLobby = normalizedStars;
+  // Star Collector craft grants bonus Lobby Stars on every clear
+  const activeSat = getSatelliteById(prev.selectedSatellite);
+  const craftBonusStars = activeSat.bonusLobbyStars ?? 0;
+  const starsAddedToLobby = normalizedStars + craftBonusStars;
+
+  // Boss Finale clear grants a Boss Bounty in Rockets
+  const lvl = getLevelById(levelId);
+  const bossBonusRockets = lvl.boss ? lvl.boss.bonusRockets : 0;
 
   // Check if all 10 levels of this sector are now cleared for the first time (+50 Rockets bonus!)
   const sectorId = Math.max(1, Math.min(TOTAL_SECTORS, Math.ceil(levelId / 10)));
@@ -495,7 +579,7 @@ export function recordLevelCompletion(
     ...prev,
     currentLevelId: nextLevelId,
     stars: prev.stars + starsAddedToLobby,
-    rockets: prev.rockets + sectorBonusRockets,
+    rockets: prev.rockets + sectorBonusRockets + bossBonusRockets,
     claimedSectorBonuses: updatedClaimedBonuses,
     records: updatedRecords,
   };
@@ -514,6 +598,8 @@ export function recordLevelCompletion(
     isNewBestTime,
     isNewBestShifts,
     starsAddedToLobby,
+    craftBonusStars,
+    bossBonusRockets,
     sectorBonusRockets,
     completedSectorTitle,
   };
